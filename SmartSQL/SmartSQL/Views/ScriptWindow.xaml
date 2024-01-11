@@ -32,8 +32,9 @@
                 <Button
                     x:Name="BtnClose"
                     Width="80"
-                    Height="28"
+                    Height="25"
                     Margin="0,0,10,5"
+                    Padding="20,0,20,0"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     BorderBrush="#f0f0f0"

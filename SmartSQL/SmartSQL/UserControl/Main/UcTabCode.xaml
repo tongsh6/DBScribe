@@ -38,8 +38,7 @@
                 Margin="5"
                 HorizontalAlignment="Left"
                 BorderBrush="#e0e0e0"
-                BorderThickness="0.4"
-                CornerRadius="8">
+                BorderThickness="0.4">
                 <ListBox
                     Name="ListBoxLanguage"
                     Width="100"
@@ -48,6 +47,7 @@
                     BorderThickness="0"
                     SelectionChanged="ListBoxLanguage_OnSelectionChanged">
                     <ListBoxItem
+                        hc:BorderElement.CornerRadius="5"
                         Content="SQL"
                         IsSelected="True"
                         Style="{StaticResource CodeListBox}" />

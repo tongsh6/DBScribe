@@ -106,7 +106,7 @@ namespace SmartSQL.UserControl.Connect
             }
             if (tipMsg.ToString().Length > 0)
             {
-                Growl.WarningGlobal(new GrowlInfo { Message = tipMsg.ToString(), WaitTime = 1, ShowDateTime = false });
+                Growl.Warning(new GrowlInfo { Message = tipMsg.ToString(), WaitTime = 1, ShowDateTime = false });
                 return false;
             }
             return true;

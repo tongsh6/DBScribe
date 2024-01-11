@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa6="http://schemas.fontawesome.com/icons/fonts"
     xmlns:hc="https://handyorg.github.io/handycontrol"
     xmlns:local="clr-namespace:SmartSQL.UserControl"
     xmlns:localBase="clr-namespace:SmartSQL.UserControl.Controls"
@@ -139,27 +140,42 @@
                                 <Button
                                     x:Name="BtnSetTag"
                                     Height="26"
-                                    hc:IconElement.Geometry="{StaticResource TagGeometry}"
                                     Click="BtnSetTag_OnClick"
-                                    Content="设置标签"
                                     Cursor="Hand"
-                                    Style="{StaticResource ButtonSuccess}" />
+                                    Style="{StaticResource ButtonSuccess}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Solid_Tags" />
+                                            <TextBlock Margin="5,-1,0,0" Text="设置标签" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
                                 <Button
                                     x:Name="BtnSetGroup"
                                     Height="26"
-                                    hc:IconElement.Geometry="{StaticResource SetGroupGeometry}"
                                     Click="BtnSetGroup_OnClick"
-                                    Content="设置分组"
                                     Cursor="Hand"
-                                    Style="{StaticResource ButtonWarning}" />
+                                    Style="{StaticResource ButtonWarning}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Regular_FolderOpen" />
+                                            <TextBlock Margin="5,-1,0,0" Text="设置分组" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
                                 <Button
                                     x:Name="BtnGenCode"
                                     Height="26"
-                                    hc:IconElement.Geometry="{StaticResource EntityGeometry}"
                                     Click="BtnGenCode_OnClick"
-                                    Content="生成代码"
                                     Cursor="Hand"
-                                    Style="{StaticResource ButtonPrimary}" />
+                                    Style="{StaticResource ButtonPrimary}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Brands_Magento" />
+                                            <TextBlock Margin="5,-1,0,0" Text="生成代码" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
                             </hc:UniformSpacingPanel>
                         </hc:SimpleStackPanel>
                     </Grid>
