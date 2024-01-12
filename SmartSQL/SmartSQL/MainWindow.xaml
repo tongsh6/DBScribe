@@ -6,6 +6,7 @@
     xmlns:fa="http://schemas.fontawesome.io/icons/"
     xmlns:fa6="http://schemas.fontawesome.com/icons/fonts"
     xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:material="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
     xmlns:userControl="clr-namespace:SmartSQL.UserControl"
