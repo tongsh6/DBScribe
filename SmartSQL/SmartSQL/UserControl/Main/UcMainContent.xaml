@@ -10,6 +10,7 @@
     xmlns:hc="https://handyorg.github.io/handycontrol"
     xmlns:local="clr-namespace:SmartSQL.UserControl"
     xmlns:localControls="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:material="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="clr-namespace:SmartSQL.Models"
     xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
@@ -58,9 +59,9 @@
                         <StackPanel Margin="3,3,3,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="8*" />
-                                    <ColumnDefinition Width="1*" MinWidth="35" />
-                                    <ColumnDefinition Width="1*" MinWidth="35" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" MinWidth="35" />
+                                    <ColumnDefinition Width="Auto" MinWidth="35" />
                                 </Grid.ColumnDefinitions>
                                 <ComboBox
                                     x:Name="SelectDatabase"
@@ -100,21 +101,24 @@
                                 <Button
                                     Name="BtnFresh"
                                     Grid.Column="1"
-                                    fa6p:FontAwesome.Icon="Solid_ArrowsRotate"
+                                    Margin="3,0,3,0"
                                     BorderThickness="0"
                                     Click="BtnFresh_OnClick"
+                                    Content="{material:MaterialIconExt DatabaseRefreshOutline,
+                                                                       Size=20}"
                                     Cursor="Hand"
-                                    FontSize="14"
+                                    FontSize="15"
                                     Foreground="#417ff9"
                                     ToolTip="刷新" />
                                 <Button
                                     Name="BtnQuery"
                                     Grid.Column="2"
-                                    fa6p:FontAwesome.Icon="Solid_PenToSquare"
                                     BorderThickness="0"
                                     Click="BtnQuery_Click"
+                                    Content="{material:MaterialIconExt DatabaseSearchOutline,
+                                                                       Size=20}"
                                     Cursor="Hand"
-                                    FontSize="14"
+                                    FontSize="15"
                                     Foreground="#417ff9"
                                     ToolTip="新建查询" />
                             </Grid>
