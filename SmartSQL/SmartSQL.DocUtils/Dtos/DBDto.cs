@@ -47,5 +47,9 @@ namespace SmartSQL.DocUtils.Dtos
         /// 其他一些参数数据，用法如 WinForm 控件的 Tag属性
         /// </summary>
         public object Tag { get; set; }
+        /// <summary>
+        /// 是否单Sheet页
+        /// </summary>
+        public bool IsSingleSheet { get; set; }
     }
 }

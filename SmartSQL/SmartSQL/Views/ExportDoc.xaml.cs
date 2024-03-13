@@ -950,6 +950,7 @@ namespace SmartSQL.Views
             var exportData = TreeViewData;
             var floderPath = TxtPath.Text;
             var doctype = DocumentType();
+            var isSingleSheet = ChkSigleSheet.IsChecked.Value;
             if (string.IsNullOrEmpty(doctype))
             {
                 Oops.Oh("请选择输出文档类型");
@@ -994,6 +995,7 @@ namespace SmartSQL.Views
                     dbDto.DocTitle = docTitle;
                     //数据库类型
                     dbDto.DBType = selectedConnection.DbType.ToString();
+                    dbDto.IsSingleSheet = isSingleSheet;
                     //对象列表
                     dbDto.Tables = Trans2Table(exportData, selectedConnection, selectedDatabase, totalProgressNum, docTypeEnum);
                     if (docTypeEnum != DocType.word && docTypeEnum != DocType.excel && docTypeEnum != DocType.html)
@@ -1311,7 +1313,13 @@ namespace SmartSQL.Views
                     toggle.IsChecked = false;
                 }
             }
-            var tipMsg = _docTypeTipMsg[button.Name.ToLower()];
+            SheetType.Visibility = Visibility.Collapsed;
+            var docType = button.Name.ToLower();
+            if (docType == DocType.excel.ToString())
+            {
+                SheetType.Visibility = Visibility.Visible;
+            }
+            var tipMsg = _docTypeTipMsg[docType];
             if (!string.IsNullOrEmpty(tipMsg))
             {
                 //GridTipMsg.Visibility = Visibility.Visible;

@@ -308,6 +308,32 @@
 
                         </Border>
                     </Grid>
+
+                    <Grid x:Name="SheetType" Visibility="Collapsed" Margin="10,149,10,20">
+                        <TextBlock
+                            Margin="0,52,0,0"
+                            VerticalAlignment="Top"
+                            Text="Sheet类型" />
+                        <UniformGrid
+                            Height="80"
+                            Margin="60,40,20,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Columns="3"
+                            Rows="2">
+                            <RadioButton
+                            x:Name="ChkSigleSheet"
+                            Content="单Sheet"
+                            IsChecked="True"
+                            Cursor="Hand" />
+                            <RadioButton
+                            x:Name="ChkMultipleSheet"
+                            Margin="18,0,0,0"
+                            Content="多Sheet"
+                            Cursor="Hand" />
+                        </UniformGrid>
+                    </Grid>
+
                 </Grid>
 
                 <!--  按钮栏  -->

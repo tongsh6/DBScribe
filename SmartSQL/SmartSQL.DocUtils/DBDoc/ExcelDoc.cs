@@ -9,6 +9,7 @@ using SmartSQL.DocUtils.Dtos;
 using SmartSQL.DocUtils.Properties;
 using SmartSQL.DocUtils.DBDoc;
 using OfficeOpenXml.Style;
+using OfficeOpenXml;
 
 namespace SmartSQL.DocUtils.DBDoc
 {
@@ -54,9 +55,23 @@ namespace SmartSQL.DocUtils.DBDoc
                 //  创建overview sheet
                 CreateOverviewSheet(epck, AppConst.TABLE_CHAPTER_NAME, dto, tables);
 
-                //  创建tables sheet
-                CreateTableSheet(epck, AppConst.TABLE_STRUCTURE_CHAPTER_NAME, dto, tables);
-
+                if (dto.IsSingleSheet)
+                {
+                    //单Sheet页
+                    CreateTableSheet(epck, AppConst.TABLE_STRUCTURE_CHAPTER_NAME, dto, tables);
+                }
+                else
+                {
+                    //多Sheet页
+                    foreach (var tab in tables)
+                    {
+                        var tableList = new List<TableDto>
+                        {
+                            tab
+                        };
+                        CreateTableSheet(epck, tab.TableName, dto, tableList);
+                    }
+                }
                 epck.Save(); // 保存excel
                 epck.Dispose();
             }
@@ -118,7 +133,7 @@ namespace SmartSQL.DocUtils.DBDoc
             overviewTbWorksheet.Column(2).Width = 25;
             overviewTbWorksheet.Column(3).Width = 50;
             overviewTbWorksheet.Column(4).Width = 25;
-            overviewTbWorksheet.Column(5).Width = 25; 
+            overviewTbWorksheet.Column(5).Width = 25;
             #endregion
         }
 
@@ -161,6 +176,12 @@ namespace SmartSQL.DocUtils.DBDoc
                 overviewTbWorksheet.Cells[row, 1].Value = table.TableOrder;
                 overviewTbWorksheet.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 overviewTbWorksheet.Cells[row, 2].Value = table.TableName;
+                if (!dto.IsSingleSheet)
+                {
+                    overviewTbWorksheet.Cells[row, 2].Hyperlink =   new ExcelHyperLink(table.TableName + "!A1", table.TableName);
+                    overviewTbWorksheet.Cells[row, 2].Style.Font.UnderLine = true;
+                    overviewTbWorksheet.Cells[row, 2].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                }
                 overviewTbWorksheet.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
                 overviewTbWorksheet.Cells[row, 3].Value = comment;
                 overviewTbWorksheet.Cells[row, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
@@ -174,7 +195,7 @@ namespace SmartSQL.DocUtils.DBDoc
             overviewTbWorksheet.Cells[1, 1, row - 1, 3].Style.Border.Right.Style = ExcelBorderStyle.Thin;
             overviewTbWorksheet.Column(1).Width = 10;
             overviewTbWorksheet.Column(2).Width = 50;
-            overviewTbWorksheet.Column(3).Width = 50; 
+            overviewTbWorksheet.Column(3).Width = 50;
             #endregion
         }
 
@@ -231,6 +252,13 @@ namespace SmartSQL.DocUtils.DBDoc
                 {
                     tbWorksheet.Cells[rowNum, j + 1].Value = lstName[j];
                     tbWorksheet.Cells[rowNum, j + 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                }
+                if (!dto.IsSingleSheet)
+                {
+                    tbWorksheet.Cells[rowNum, lstName.Count + 1].Value = "返回目录";
+                    tbWorksheet.Cells[rowNum, lstName.Count + 1].Hyperlink =   new ExcelHyperLink("目录!A1", "返回目录");
+                    tbWorksheet.Cells[rowNum, lstName.Count + 1].Style.Font.UnderLine = true;
+                    tbWorksheet.Cells[rowNum, lstName.Count + 1].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                 }
 
                 rowNum++; // 行号+1
@@ -331,7 +359,7 @@ namespace SmartSQL.DocUtils.DBDoc
             OfficeOpenXml.ExcelWorksheet tbWorksheet = epck.Workbook.Worksheets.Add(sheetName);
             int rowNum = 1, fromRow = 0, count = 0; // 行号计数器
                                                     //  循环数据库表名
-            foreach (var table in tables)   
+            foreach (var table in tables)
             {
                 var lstName = new List<string>
                 {
