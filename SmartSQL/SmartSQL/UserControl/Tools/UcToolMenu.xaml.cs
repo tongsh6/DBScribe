@@ -136,6 +136,10 @@ namespace SmartSQL.UserControl
                     toolBox.UcBox.Content = new UcQrCode();
                     title = "条形码生成";
                     break;
+                case "jsonToExcel":
+                    toolBox.UcBox.Content = new UcJsonToExcel();
+                    title = "Json转换Excel";
+                    break;
                 default:
                     Oops.Oh("敬请期待"); return;
             }
