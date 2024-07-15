@@ -151,7 +151,7 @@
                             Height="28"
                             Margin="0,0,10,0"
                             hc:IconElement.Geometry="{StaticResource ClearGeometry}"
-                            BorderThickness="0.4"
+                            BorderThickness="0.6"
                             Click="BtnClear_Click"
                             Content="清空"
                             Cursor="Hand" />
