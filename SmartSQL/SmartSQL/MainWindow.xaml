@@ -313,7 +313,7 @@
                     </ListBoxItem>
                     <ListBoxItem
                         x:Name="MenuSite"
-                        IsEnabled="True"
+                        IsEnabled="False"
                         Selected="MenuSite_Selected">
                         <StackPanel>
                             <fa:FontAwesome FontSize="16" Icon="InternetExplorer" />
