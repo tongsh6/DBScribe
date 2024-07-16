@@ -130,7 +130,7 @@
                                         x:Name="BtnConvert"
                                         Width="80"
                                         Height="28"
-                                        hc:IconElement.Geometry="{StaticResource CodeEGeometry}"
+                                        hc:IconElement.Geometry="{StaticResource StartGeometry}"
                                         Click="BtnConvert_Click"
                                         Content="转换"
                                         Cursor="Hand"
