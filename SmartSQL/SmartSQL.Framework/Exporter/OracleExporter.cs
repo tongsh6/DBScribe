@@ -187,7 +187,6 @@ namespace SmartSQL.Framework.Exporter
                     case "datetime2":
                     case "datetimeoffset":
                         column.LengthName = $"({v.Length})"; break;
-                    case "number":
                     case "numeric":
                     case "decimal":
                         column.LengthName = $"({v.Length},{v.Scale})"; break;
