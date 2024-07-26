@@ -66,7 +66,7 @@
                     Margin="0,188,20,20"
                     Cursor="Arrow"
                     Foreground="#40485b"
-                    Text="模式" />
+                    Text="默认数据库" />
             </Grid>
             <Grid x:Name="MySqlConnectForm" Grid.Column="1">
                 <TextBox
@@ -136,7 +136,7 @@
                     Height="0"
                     Margin="0,180,20,20"
                     VerticalAlignment="Top"
-                    hc:InfoElement.Placeholder="请输入默认模式"
+                    hc:InfoElement.Placeholder="请输入默认数据库"
                     Background="#F4F5F7"
                     BorderThickness="0"
                     ShowClearButton="True" />
