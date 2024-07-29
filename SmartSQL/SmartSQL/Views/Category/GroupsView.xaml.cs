@@ -26,6 +26,8 @@ using SqlSugar;
 using SmartSQL.Views.Category;
 using SmartSQL.Helper;
 using SmartSQL.UserControl.Tags;
+using DocumentFormat.OpenXml.Spreadsheet;
+using GongSolutions.Wpf.DragDrop;
 
 namespace SmartSQL.Views
 {
@@ -34,7 +36,7 @@ namespace SmartSQL.Views
     /// <summary>
     /// GroupManage.xaml 的交互逻辑
     /// </summary>
-    public partial class GroupsView : INotifyPropertyChanged
+    public partial class GroupsView : INotifyPropertyChanged, IDropTarget
     {
         public event ChangeRefreshHandler ChangeRefreshEvent;
 
@@ -134,7 +136,7 @@ namespace SmartSQL.Views
             MainContent = new UcGroupObjects();
         }
 
-        public void Tag_ChangeRefreshEvent()
+        public void Group_ChangeRefreshEvent()
         {
             ReloadMenu();
         }
@@ -148,13 +150,14 @@ namespace SmartSQL.Views
             var datalist = sqliteInstance.GetList<GroupInfo>(x =>
                 x.ConnectId == SelectedConnection.ID &&
                 x.DataBaseName == SelectedDataBase
-            );
+            ).OrderBy(x => x.OrderFlag).ToList();
             GroupMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void Selector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            #region MyRegion
             var listBox = (ListBox)sender;
             var selConn = SelectedConnection;
             var selectDataBase = SelectedDataBase;
@@ -169,7 +172,8 @@ namespace SmartSQL.Views
                 ucGroupObjects.SelectedGroup = group;
                 ucGroupObjects.LoadPageData();
                 MainContent = ucGroupObjects;
-            }
+            } 
+            #endregion
         }
 
         /// <summary>
@@ -179,88 +183,96 @@ namespace SmartSQL.Views
         /// <param name="e"></param>
         private void BtnAdd_OnClick(object sender, RoutedEventArgs e)
         {
-            var tagAdd = new GroupAddView();
-            tagAdd.SelectedConnection = SelectedConnection;
-            tagAdd.SelectedDataBase = SelectedDataBase;
-            tagAdd.ChangeRefreshEvent += Tag_ChangeRefreshEvent;
-            tagAdd.Owner = this;
-            tagAdd.ShowDialog();
+            var groupAdd = new GroupAddView();
+            groupAdd.SelectedConnection = SelectedConnection;
+            groupAdd.SelectedDataBase = SelectedDataBase;
+            groupAdd.ChangeRefreshEvent += Group_ChangeRefreshEvent;
+            groupAdd.Owner = this;
+            groupAdd.ShowDialog();
         }
 
-        private void ListGroup_OnDrop(object sender, DragEventArgs e)
-        {
-            #region MyRegion
-            var selectedDatabase = SelectedDataBase;// (DataBase)SelectDatabase.SelectedItem;
-            var selConn = SelectedConnection;
-            var pos = e.GetPosition(ListGroup);
-            var result = VisualTreeHelper.HitTest(ListGroup, pos);
-            if (result == null)
-            {
-                return;
-            }
-            //查找元数据
-            if (!(e.Data.GetData(typeof(GroupInfo)) is GroupInfo sourceGroup))
-            {
-                return;
-            }
-            //查找目标数据
-            var listBoxItem = Utils.FindVisualParent<ListBoxItem>(result.VisualHit);
-            if (listBoxItem == null)
-            {
-                return;
-            }
-            var targetGroup = listBoxItem.Content as GroupInfo;
-            if (ReferenceEquals(targetGroup, sourceGroup))
-            {
-                return;
-            }
-            var sourceOrder = sourceGroup.OrderFlag;
-            var targetOrder = targetGroup.OrderFlag;
-            sourceGroup.OrderFlag = targetOrder;
-            targetGroup.OrderFlag = sourceOrder;
-            var sqLiteHelper = new SQLiteHelper();
-            var listG = new List<GroupInfo>()
-            {
-                sourceGroup,
-                targetGroup
-            };
-            sqLiteHelper.db.UpdateAll(listG);
-            var datalist = sqLiteHelper.db.Table<GroupInfo>().
-                Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
-                OrderBy(x => x.OrderFlag).ToList();
-            Dispatcher.Invoke(() =>
-            {
-                GroupMenuList = datalist;
-                if (ChangeRefreshEvent != null)
-                {
-                    ChangeRefreshEvent();
-                }
-            });
-            #endregion
-        }
+        #region 注释<废弃代码>
+        //private void ListGroup_OnDrop(object sender, DragEventArgs e)
+        //{
+        //    #region MyRegion
+        //    var selectedDatabase = SelectedDataBase;// (DataBase)SelectDatabase.SelectedItem;
+        //    var selConn = SelectedConnection;
+        //    var pos = e.GetPosition(ListGroup);
+        //    var result = VisualTreeHelper.HitTest(ListGroup, pos);
+        //    if (result == null)
+        //    {
+        //        return;
+        //    }
+        //    //查找元数据
+        //    if (!(e.Data.GetData(typeof(GroupInfo)) is GroupInfo sourceGroup))
+        //    {
+        //        return;
+        //    }
+        //    //查找目标数据
+        //    var listBoxItem = Utils.FindVisualParent<ListBoxItem>(result.VisualHit);
+        //    if (listBoxItem == null)
+        //    {
+        //        return;
+        //    }
+        //    var targetGroup = listBoxItem.Content as GroupInfo;
+        //    if (ReferenceEquals(targetGroup, sourceGroup))
+        //    {
+        //        return;
+        //    }
+        //    var sourceOrder = sourceGroup.OrderFlag;
+        //    var targetOrder = targetGroup.OrderFlag;
+        //    sourceGroup.OrderFlag = targetOrder;
+        //    targetGroup.OrderFlag = sourceOrder;
+        //    var sqLiteHelper = new SQLiteHelper();
+        //    var listG = new List<GroupInfo>()
+        //    {
+        //        sourceGroup,
+        //        targetGroup
+        //    };
+        //    sqLiteHelper.db.UpdateAll(listG);
+        //    var datalist = sqLiteHelper.db.Table<GroupInfo>().
+        //        Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
+        //        OrderBy(x => x.OrderFlag).ToList();
+        //    Dispatcher.Invoke(() =>
+        //    {
+        //        GroupMenuList = datalist;
+        //        if (ChangeRefreshEvent != null)
+        //        {
+        //            ChangeRefreshEvent();
+        //        }
+        //    });
+        //    #endregion
+        //} 
 
+        //private void ListGroup_OnPreviewMouseMove(object sender, MouseEventArgs e)
+        //{
+        //    #region MyRegion
+        //    if (Mouse.LeftButton == MouseButtonState.Pressed)
+        //    {
+        //        var pos = e.GetPosition(ListGroup);
+        //        HitTestResult result = VisualTreeHelper.HitTest(ListGroup, pos);
+        //        if (result == null)
+        //        {
+        //            return;
+        //        }
+        //        var listBoxItem = Utils.FindVisualParent<ListBoxItem>(result.VisualHit);
+        //        if (listBoxItem == null || listBoxItem.Content != ListGroup.SelectedItem)
+        //        {
+        //            return;
+        //        }
+        //        DataObject dataObj = new DataObject(listBoxItem.Content as GroupInfo);
+        //        try
+        //        {
+        //            System.Windows.DragDrop.DoDragDrop(ListGroup, dataObj, DragDropEffects.Move);
+        //        }
+        //        catch (Exception)
+        //        {
 
-        private void ListGroup_OnPreviewMouseMove(object sender, MouseEventArgs e)
-        {
-            #region MyRegion
-            if (Mouse.LeftButton == MouseButtonState.Pressed)
-            {
-                var pos = e.GetPosition(ListGroup);
-                HitTestResult result = VisualTreeHelper.HitTest(ListGroup, pos);
-                if (result == null)
-                {
-                    return;
-                }
-                var listBoxItem = Utils.FindVisualParent<ListBoxItem>(result.VisualHit);
-                if (listBoxItem == null || listBoxItem.Content != ListGroup.SelectedItem)
-                {
-                    return;
-                }
-                DataObject dataObj = new DataObject(listBoxItem.Content as GroupInfo);
-                DragDrop.DoDragDrop(ListGroup, dataObj, DragDropEffects.Move);
-            }
-            #endregion
-        }
+        //        }
+        //    }
+        //    #endregion
+        //}
+        #endregion
 
         /// <summary>
         /// 修改分组
@@ -278,7 +290,7 @@ namespace SmartSQL.Views
             groupAdd.SelectedGroup = selectedGroup;
             groupAdd.SelectedConnection = SelectedConnection;
             groupAdd.SelectedDataBase = SelectedDataBase;
-            groupAdd.ChangeRefreshEvent += Tag_ChangeRefreshEvent;
+            groupAdd.ChangeRefreshEvent += Group_ChangeRefreshEvent;
             groupAdd.Owner = this;
             groupAdd.ShowDialog();
         }
@@ -342,6 +354,62 @@ namespace SmartSQL.Views
                 Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.GroupName.Contains(searchTag)).ToList();
             GroupMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        void IDropTarget.DragEnter(IDropInfo dropInfo)
+        {
+
+        }
+
+        void IDropTarget.DragLeave(IDropInfo dropInfo)
+        {
+
+        }
+
+        void IDropTarget.Drop(IDropInfo dropInfo)
+        {
+            if (dropInfo.Data == null || dropInfo.TargetItem == null)
+            {
+                return;
+            }
+            var selectedDatabase = SelectedDataBase;
+            var selConn = SelectedConnection;
+            GroupInfo sourceItem = dropInfo.Data as GroupInfo;
+            GroupInfo targetItem = dropInfo.TargetItem as GroupInfo;
+            var targetList = dropInfo.TargetCollection as List<GroupInfo>;
+            var insertIndex = dropInfo.InsertIndex;
+            insertIndex = targetList.IndexOf(targetItem);
+            targetList.Remove(sourceItem);
+            targetList.Insert(insertIndex, sourceItem);
+
+            for (int i = 0; i < targetList.Count; i++)
+            {
+                targetList[i].OrderFlag = DateTime.Now.AddSeconds(i);
+            }
+            var sqLiteHelper = new SQLiteHelper();
+            sqLiteHelper.db.UpdateAll(targetList);
+            var datalist = sqLiteHelper.db.Table<GroupInfo>().
+                Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
+                OrderBy(x => x.OrderFlag).ToList();
+            Dispatcher.Invoke(() =>
+            {
+                GroupMenuList = datalist;
+                if (ChangeRefreshEvent != null)
+                {
+                    ChangeRefreshEvent();
+                }
+            });
+        }
+
+        void IDropTarget.DragOver(IDropInfo dropInfo)
+        {
+            GroupInfo sourceItem = dropInfo.Data as GroupInfo;
+            GroupInfo targetItem = dropInfo.TargetItem as GroupInfo;
+            if (sourceItem != null && targetItem != null)
+            {
+                dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
+                dropInfo.Effects = DragDropEffects.Move;
+            }
         }
     }
 

@@ -326,7 +326,7 @@ namespace SmartSQL.UserControl
                 {
                     curTags = sqLiteHelper.db.Table<TagInfo>().Where(a =>
                         a.ConnectId == selectConnection.ID &&
-                        a.DataBaseName == selectDataBase).ToList();
+                        a.DataBaseName == selectDataBase).OrderBy(x => x.OrderFlag).ToList();
                     if (curTags.Any())
                     {
                         foreach (var tag in curTags)
@@ -905,7 +905,7 @@ namespace SmartSQL.UserControl
             {
                 curTags = sqLiteHelper.db.Table<TagInfo>().Where(a =>
                     a.ConnectId == selectConnection.ID &&
-                    a.DataBaseName == selectDataBase).ToList();
+                    a.DataBaseName == selectDataBase).OrderBy(x => x.OrderFlag).ToList();
                 if (!curTags.Any())
                 {
                     NoDataAreaText.TipText = "暂无标签，请先创建标签";

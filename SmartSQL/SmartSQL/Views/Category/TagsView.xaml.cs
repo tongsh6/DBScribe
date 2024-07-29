@@ -24,13 +24,14 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using MessageBox = HandyControl.Controls.MessageBox;
+using GongSolutions.Wpf.DragDrop;
 
 namespace SmartSQL.Views.Category
 {
     /// <summary>
     /// UserControl1.xaml 的交互逻辑
     /// </summary>
-    public partial class TagsView : INotifyPropertyChanged
+    public partial class TagsView : INotifyPropertyChanged, IDropTarget
     {
         public event ChangeRefreshHandler ChangeRefreshEvent;
 
@@ -113,9 +114,9 @@ namespace SmartSQL.Views.Category
             Task.Run(() =>
             {
                 var sqLiteInstance = SQLiteHelper.GetInstance();
-                var tagMenuList = sqLiteInstance.GetList<TagInfo>(x =>
-                   x.ConnectId == selConn.ID &&
-                   x.DataBaseName == selectDataBase);
+                var tagMenuList = sqLiteInstance.db.Table<TagInfo>()
+                    .Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectDataBase)
+                    .OrderBy(x => x.OrderFlag).ToList();
                 Dispatcher.Invoke(() =>
                 {
                     TagMenuList = tagMenuList;
@@ -125,7 +126,7 @@ namespace SmartSQL.Views.Category
                     }
                 });
             });
-            MainContent = new UcTagObjects(); 
+            MainContent = new UcTagObjects();
             #endregion
         }
 
@@ -144,9 +145,9 @@ namespace SmartSQL.Views.Category
             var datalist = sqliteInstance.GetList<TagInfo>(x =>
                 x.ConnectId == SelectedConnection.ID &&
                 x.DataBaseName == SelectedDataBase
-                );
+                ).OrderBy(x => x.OrderFlag).ToList();
             TagMenuList = datalist;
-            NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible; 
+            NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
             #endregion
         }
 
@@ -157,6 +158,7 @@ namespace SmartSQL.Views.Category
         /// <param name="e"></param>
         private void Selector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            #region MyRegion
             var listBox = (ListBox)sender;
             var selConn = SelectedConnection;
             var selectDataBase = SelectedDataBase;
@@ -172,6 +174,7 @@ namespace SmartSQL.Views.Category
                 ucTagObjects.LoadPageData();
                 MainContent = ucTagObjects;
             }
+            #endregion
         }
 
         /// <summary>
@@ -181,12 +184,14 @@ namespace SmartSQL.Views.Category
         /// <param name="e"></param>
         private void BtnAdd_OnClick(object sender, RoutedEventArgs e)
         {
+            #region MyRegion
             var tagAdd = new TagAddView();
             tagAdd.SelectedConnection = SelectedConnection;
             tagAdd.SelectedDataBase = SelectedDataBase;
             tagAdd.ChangeRefreshEvent += Tag_ChangeRefreshEvent;
             tagAdd.Owner = this;
             tagAdd.ShowDialog();
+            #endregion
         }
 
         /// <summary>
@@ -196,12 +201,14 @@ namespace SmartSQL.Views.Category
         /// <param name="e"></param>
         private void SearchMenu_TextChanged(object sender, TextChangedEventArgs e)
         {
+            #region MyRegion
             var searchTag = SearchTag.Text.Trim();
             var sqlLiteInstance = SQLiteHelper.GetInstance();
             var datalist = sqlLiteInstance.db.Table<TagInfo>().
                 Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.TagName.Contains(searchTag)).ToList();
             TagMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
+            #endregion
         }
 
         /// <summary>
@@ -211,6 +218,7 @@ namespace SmartSQL.Views.Category
         /// <param name="e"></param>
         private void MenuEdit_OnClick(object sender, RoutedEventArgs e)
         {
+            #region MyRegion
             if (!(ListTag.SelectedItem is TagInfo selectedTag))
             {
                 Oops.Oh("请选择需要修改的标签.");
@@ -223,6 +231,7 @@ namespace SmartSQL.Views.Category
             tagAdd.ChangeRefreshEvent += Tag_ChangeRefreshEvent;
             tagAdd.Owner = this;
             tagAdd.ShowDialog();
+            #endregion
         }
 
         /// <summary>
@@ -232,12 +241,13 @@ namespace SmartSQL.Views.Category
         /// <param name="e"></param>
         private void MenuDelete_OnClick(object sender, RoutedEventArgs e)
         {
+            #region MyRegion
             if (!(ListTag.SelectedItem is TagInfo selectedTag))
             {
                 Oops.Oh("请选择需要删除的标签.");
                 return;
             }
-            var msResult = MessageBox.Show("删除标签将会删除该标签下所有表的该标签信息，是否继续？","提示",MessageBoxButton.OKCancel,MessageBoxImage.Asterisk);
+            var msResult = MessageBox.Show("删除标签将会删除该标签下所有表的该标签信息，是否继续？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.Asterisk);
             if (msResult == MessageBoxResult.OK)
             {
                 var sqlLiteInstance = SQLiteHelper.GetInstance();
@@ -266,6 +276,63 @@ namespace SmartSQL.Views.Category
                         MainContent = new UcTagObjects();
                     });
                 });
+            }
+            #endregion
+        }
+
+        void IDropTarget.DragEnter(IDropInfo dropInfo)
+        {
+
+        }
+
+        void IDropTarget.DragLeave(IDropInfo dropInfo)
+        {
+
+        }
+
+        void IDropTarget.Drop(IDropInfo dropInfo)
+        {
+            if (dropInfo.Data == null || dropInfo.TargetItem == null)
+            {
+                return;
+            }
+            var selectedDatabase = SelectedDataBase;
+            var selConn = SelectedConnection;
+            TagInfo sourceItem = dropInfo.Data as TagInfo;
+            TagInfo targetItem = dropInfo.TargetItem as TagInfo;
+            var targetList = dropInfo.TargetCollection as List<TagInfo>;
+            var insertIndex = dropInfo.InsertIndex;
+            insertIndex = targetList.IndexOf(targetItem);
+            targetList.Remove(sourceItem);
+            targetList.Insert(insertIndex, sourceItem);
+
+            for (int i = 0; i < targetList.Count; i++)
+            {
+                targetList[i].OrderFlag = DateTime.Now.AddSeconds(i);
+            }
+            var sqLiteHelper = new SQLiteHelper();
+            sqLiteHelper.db.UpdateAll(targetList);
+            var datalist = sqLiteHelper.db.Table<TagInfo>().
+                Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
+                OrderBy(x => x.OrderFlag).ToList();
+            Dispatcher.Invoke(() =>
+            {
+                TagMenuList = datalist;
+                if (ChangeRefreshEvent != null)
+                {
+                    ChangeRefreshEvent();
+                }
+            });
+        }
+
+        void IDropTarget.DragOver(IDropInfo dropInfo)
+        {
+            TagInfo sourceItem = dropInfo.Data as TagInfo;
+            TagInfo targetItem = dropInfo.TargetItem as TagInfo;
+            if (sourceItem != null && targetItem != null)
+            {
+                dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
+                dropInfo.Effects = DragDropEffects.Move;
             }
         }
     }

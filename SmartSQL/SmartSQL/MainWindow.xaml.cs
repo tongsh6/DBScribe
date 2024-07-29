@@ -182,6 +182,7 @@ namespace SmartSQL
             tags.SelectedDataBase = selectDatabase.DbName;
             tags.DbData = MainContent.MenuData;
             tags.Owner = this;
+            tags.ChangeRefreshEvent += MainContent.ChangeRefreshMenuEvent;
             tags.ShowDialog();
         }
 
