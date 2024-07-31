@@ -12,6 +12,7 @@
     xmlns:localControls="clr-namespace:SmartSQL.UserControl.Controls"
     xmlns:material="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:dd="urn:gong-wpf-dragdrop"
     xmlns:models="clr-namespace:SmartSQL.Models"
     xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
     xmlns:userControl="clr-namespace:SmartSQL.UserControl"

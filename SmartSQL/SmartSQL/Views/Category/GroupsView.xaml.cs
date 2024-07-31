@@ -123,7 +123,8 @@ namespace SmartSQL.Views
                 var sqLiteHelper = new SQLiteHelper();
                 var groupMenuList = sqLiteHelper.db.Table<GroupInfo>()
                     .Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectDataBase)
-                    .OrderBy(x => x.OrderFlag).ToList();
+                    .OrderBy(x => x.OrderFlag)
+                    .ToList();
                 Dispatcher.Invoke(() =>
                 {
                     if (!groupMenuList.Any())
@@ -138,6 +139,10 @@ namespace SmartSQL.Views
 
         public void Group_ChangeRefreshEvent()
         {
+            if (ChangeRefreshEvent != null)
+            {
+                ChangeRefreshEvent();
+            }
             ReloadMenu();
         }
 
@@ -172,7 +177,7 @@ namespace SmartSQL.Views
                 ucGroupObjects.SelectedGroup = group;
                 ucGroupObjects.LoadPageData();
                 MainContent = ucGroupObjects;
-            } 
+            }
             #endregion
         }
 
@@ -317,8 +322,10 @@ namespace SmartSQL.Views
                 Task.Run(() =>
                 {
                     sqlLiteInstance.db.Delete<GroupInfo>(selectedGroup.Id);
-                    var datalist = sqlLiteInstance.db.Table<GroupInfo>().
-                        Where(x => x.ConnectId == connKey && x.DataBaseName == selectedDatabase).ToList();
+                    var datalist = sqlLiteInstance.db.Table<GroupInfo>()
+                        .Where(x => x.ConnectId == connKey && x.DataBaseName == selectedDatabase)
+                        .OrderBy(x => x.OrderFlag)
+                        .ToList();
                     var list = sqlLiteInstance.db.Table<GroupObjects>().Where(x =>
                         x.ConnectId == connKey &&
                         x.DatabaseName == selectedDatabase &&
@@ -333,7 +340,10 @@ namespace SmartSQL.Views
                     Dispatcher.Invoke(() =>
                     {
                         GroupMenuList = datalist;
-                        ReloadMenu();
+                        if (ChangeRefreshEvent != null)
+                        {
+                            ChangeRefreshEvent();
+                        }
                         MainContent = new UcGroupObjects();
                     });
                 });
@@ -350,8 +360,10 @@ namespace SmartSQL.Views
         {
             var searchTag = SearchGroup.Text.Trim();
             var sqlLiteInstance = SQLiteHelper.GetInstance();
-            var datalist = sqlLiteInstance.db.Table<GroupInfo>().
-                Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.GroupName.Contains(searchTag)).ToList();
+            var datalist = sqlLiteInstance.db.Table<GroupInfo>()
+                .Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.GroupName.Contains(searchTag))
+                .OrderBy(x => x.OrderFlag)
+                .ToList();
             GroupMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -388,9 +400,10 @@ namespace SmartSQL.Views
             }
             var sqLiteHelper = new SQLiteHelper();
             sqLiteHelper.db.UpdateAll(targetList);
-            var datalist = sqLiteHelper.db.Table<GroupInfo>().
-                Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
-                OrderBy(x => x.OrderFlag).ToList();
+            var datalist = sqLiteHelper.db.Table<GroupInfo>()
+                .Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase)
+                .OrderBy(x => x.OrderFlag)
+                .ToList();
             Dispatcher.Invoke(() =>
             {
                 GroupMenuList = datalist;
@@ -410,22 +423,6 @@ namespace SmartSQL.Views
                 dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
                 dropInfo.Effects = DragDropEffects.Move;
             }
-        }
-    }
-
-    internal static class Utils
-    {
-        //根据子元素查找父元素
-        public static T FindVisualParent<T>(DependencyObject obj) where T : class
-        {
-            while (obj != null)
-            {
-                if (obj is T)
-                    return obj as T;
-
-                obj = VisualTreeHelper.GetParent(obj);
-            }
-            return null;
         }
     }
 }

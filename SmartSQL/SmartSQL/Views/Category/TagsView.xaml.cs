@@ -132,6 +132,10 @@ namespace SmartSQL.Views.Category
 
         public void Tag_ChangeRefreshEvent()
         {
+            if (ChangeRefreshEvent != null)
+            {
+                ChangeRefreshEvent();
+            }
             ReloadMenu();
         }
 
@@ -145,7 +149,9 @@ namespace SmartSQL.Views.Category
             var datalist = sqliteInstance.GetList<TagInfo>(x =>
                 x.ConnectId == SelectedConnection.ID &&
                 x.DataBaseName == SelectedDataBase
-                ).OrderBy(x => x.OrderFlag).ToList();
+                )
+                .OrderBy(x => x.OrderFlag)
+                .ToList();
             TagMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
             #endregion
@@ -204,8 +210,10 @@ namespace SmartSQL.Views.Category
             #region MyRegion
             var searchTag = SearchTag.Text.Trim();
             var sqlLiteInstance = SQLiteHelper.GetInstance();
-            var datalist = sqlLiteInstance.db.Table<TagInfo>().
-                Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.TagName.Contains(searchTag)).ToList();
+            var datalist = sqlLiteInstance.db.Table<TagInfo>()
+                .Where(x => x.ConnectId == SelectedConnection.ID && x.DataBaseName == SelectedDataBase && x.TagName.Contains(searchTag))
+                .OrderBy(x => x.OrderFlag)
+                .ToList();
             TagMenuList = datalist;
             NoDataText.Visibility = datalist.Any() ? Visibility.Collapsed : Visibility.Visible;
             #endregion
@@ -272,7 +280,10 @@ namespace SmartSQL.Views.Category
                     Dispatcher.Invoke(() =>
                     {
                         TagMenuList = datalist;
-                        ReloadMenu();
+                        if (ChangeRefreshEvent != null)
+                        {
+                            ChangeRefreshEvent();
+                        }
                         MainContent = new UcTagObjects();
                     });
                 });
@@ -312,9 +323,10 @@ namespace SmartSQL.Views.Category
             }
             var sqLiteHelper = new SQLiteHelper();
             sqLiteHelper.db.UpdateAll(targetList);
-            var datalist = sqLiteHelper.db.Table<TagInfo>().
-                Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase).
-                OrderBy(x => x.OrderFlag).ToList();
+            var datalist = sqLiteHelper.db.Table<TagInfo>()
+                .Where(x => x.ConnectId == selConn.ID && x.DataBaseName == selectedDatabase)
+                .OrderBy(x => x.OrderFlag)
+                .ToList();
             Dispatcher.Invoke(() =>
             {
                 TagMenuList = datalist;
