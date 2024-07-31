@@ -544,7 +544,17 @@ namespace SmartSQL.Framework.Exporter
                 tableName = tableName.Split('.')[1];
             }
             var sb = new StringBuilder();
-            sb.Append($"CREATE TABLE [{schema}].[{tableName}](");
+            sb.Append($"SET ANSI_NULLS ON;");
+            sb.Append(Environment.NewLine);
+            sb.Append("GO");
+            sb.Append(Environment.NewLine);
+            sb.Append($"SET QUOTED_IDENTIFIER ON;");
+            sb.Append(Environment.NewLine);
+            sb.Append("GO");
+            sb.Append(Environment.NewLine);
+            sb.Append($"CREATE TABLE [{schema}].[{tableName}]");
+            sb.Append(Environment.NewLine);
+            sb.Append("(");
             var tempStr = new StringBuilder();
             Columns.ForEach(col =>
             {
@@ -569,6 +579,9 @@ namespace SmartSQL.Framework.Exporter
             }
             sb.Append(Environment.NewLine);
             sb.Append(")");
+            sb.Append(Environment.NewLine);
+            sb.Append("GO");
+            sb.Append(Environment.NewLine);
             Columns.ForEach(col =>
             {
                 if (string.IsNullOrEmpty(col.Comment))

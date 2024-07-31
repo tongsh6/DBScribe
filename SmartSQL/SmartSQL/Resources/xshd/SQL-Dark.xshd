@@ -190,7 +190,6 @@
           <Word>by</Word>
           <Word>type</Word>
           <Word>procedure</Word>
-          <Word>Procedure</Word>
           <Word>create</Word>
           <Word>into</Word>
           <Word>value</Word>
@@ -229,6 +228,8 @@
           <Word>primary</Word>
           <Word>break</Word>
           <Word>execute</Word>
+          <Word>ansi_nulls</Word>
+          <Word>quoted_identifier</Word>
           
           <Word>IF</Word>
           <Word>ELSE</Word>
@@ -292,6 +293,8 @@
           <Word>PRIMARY</Word>
           <Word>BREAK</Word>
           <Word>EXECUTE</Word>
+          <Word>ANSI_NULLS</Word>
+          <Word>QUOTED_IDENTIFIER</Word>
         </Keywords>
 
         <Keywords color="GotoKeywords">

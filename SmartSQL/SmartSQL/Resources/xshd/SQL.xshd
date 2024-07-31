@@ -221,7 +221,15 @@
           <Word>truncate</Word>
           <Word>over</Word>
           <Word>identity</Word>
-          <Word>Procedure</Word>
+          <Word>top</Word>
+          <Word>partition</Word>
+          <Word>add</Word>
+          <Word>key</Word>
+          <Word>primary</Word>
+          <Word>break</Word>
+          <Word>execute</Word>
+          <Word>ansi_nulls</Word>
+          <Word>quoted_identifier</Word>
           
           <Word>IF</Word>
           <Word>ELSE</Word>
@@ -280,6 +288,13 @@
           <Word>IDENTITY</Word>
           <Word>TOP</Word>
           <Word>PARTITION</Word>
+          <Word>ADD</Word>
+          <Word>KEY</Word>
+          <Word>PRIMARY</Word>
+          <Word>BREAK</Word>
+          <Word>EXECUTE</Word>
+          <Word>ANSI_NULLS</Word>
+          <Word>QUOTED_IDENTIFIER</Word>
         </Keywords>
 
         <Keywords color="GotoKeywords">
