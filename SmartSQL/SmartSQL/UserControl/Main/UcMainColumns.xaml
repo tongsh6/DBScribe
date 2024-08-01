@@ -276,6 +276,7 @@
         </TabControl>
         <localBase:Loading
             x:Name="LoadingG"
+            Margin="0 30 0 0"
             BackgroundOpacity="0.1"
             Visibility="Collapsed" />
     </Grid>

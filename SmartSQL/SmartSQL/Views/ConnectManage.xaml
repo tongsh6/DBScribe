@@ -9,7 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
     xmlns:userControl="clr-namespace:SmartSQL.UserControl.Connect"
-    Title="连接管理"
+    Title="数据源管理"
     Width="840"
     Height="500"
     BorderThickness="0"
@@ -42,7 +42,7 @@
                             x:Name="TextSearchConnect"
                             Height="30"
                             Margin="0,0,40,0"
-                            hc:InfoElement.Placeholder="搜索连接"
+                            hc:InfoElement.Placeholder="搜索数据源"
                             Background="#F4F5F7"
                             BorderThickness="0"
                             FontSize="13"
@@ -165,7 +165,7 @@
                     BorderBrush="#f0f0f0"
                     Click="BtnDelete_OnClick"
                     Cursor="Hand"
-                    ToolTip="删除连接">
+                    ToolTip="删除数据源">
                     <fa:FontAwesome
                         VerticalAlignment="Center"
                         FontSize="14"

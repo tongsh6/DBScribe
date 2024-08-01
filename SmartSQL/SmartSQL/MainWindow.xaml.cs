@@ -80,13 +80,13 @@ namespace SmartSQL
             SwitchMenu.ItemsSource = connectConfigs;
             if (!connectConfigs.Any())
             {
-                SwitchMenu.Header = @"新建连接";
+                SwitchMenu.Header = @"新建数据源";
             }
             UcMainBox.Content = new UcMainContent();
         }
 
         /// <summary>
-        /// 切换数据库连接
+        /// 切换数据源
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -99,7 +99,7 @@ namespace SmartSQL
         }
 
         /// <summary>
-        /// 切换连接
+        /// 切换数据源
         /// </summary>
         /// <param name="connectConfig"></param>
         public void SwitchConnect(ConnectConfigs connectConfig)
@@ -199,14 +199,14 @@ namespace SmartSQL
         }
 
         /// <summary>
-        /// 新建连接
+        /// 新建数据源
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void SwitchMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var menuItem = (MenuItem)sender;
-            if (menuItem.Header.Equals("新建连接"))
+            if (menuItem.Header.Equals("新建数据源"))
             {
                 var connect = new ConnectManage();
                 connect.Owner = this;
@@ -216,7 +216,7 @@ namespace SmartSQL
         }
 
         /// <summary>
-        /// 新建连接
+        /// 新建数据源
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>

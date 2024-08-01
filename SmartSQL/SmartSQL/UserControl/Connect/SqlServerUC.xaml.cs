@@ -91,7 +91,7 @@ namespace SmartSQL.UserControl.Connect
             var tipMsg = new StringBuilder();
             if (string.IsNullOrEmpty(connectName))
             {
-                tipMsg.Append("- 请填写连接名称" + Environment.NewLine);
+                tipMsg.Append("- 请填写数据源名称" + Environment.NewLine);
             }
             if (string.IsNullOrEmpty(serverAddress))
             {
@@ -234,13 +234,13 @@ namespace SmartSQL.UserControl.Connect
                             connectConfig = sqLiteHelper.db.Table<ConnectConfigs>().FirstOrDefault(x => x.ID == connectId);
                             if (connectConfig == null)
                             {
-                                Growl.Warning(new GrowlInfo { Message = $"当前连接不存在或已被删除", WaitTime = 1, ShowDateTime = false });
+                                Growl.Warning(new GrowlInfo { Message = $"当前数据源不存在或已被删除", WaitTime = 1, ShowDateTime = false });
                                 return;
                             }
                             var connectAny = sqLiteHelper.db.Table<ConnectConfigs>().FirstOrDefault(x => x.ConnectName == connectName && x.ID != connectId);
                             if (connectAny != null)
                             {
-                                Growl.Warning(new GrowlInfo { Message = $"已存在相同名称的连接名", WaitTime = 1, ShowDateTime = false });
+                                Growl.Warning(new GrowlInfo { Message = $"已存在相同的数据源名称", WaitTime = 1, ShowDateTime = false });
                                 return;
                             }
                             connectConfig.ConnectName = connectName;
@@ -258,7 +258,7 @@ namespace SmartSQL.UserControl.Connect
                             var connect = sqLiteHelper.db.Table<ConnectConfigs>().FirstOrDefault(x => x.ConnectName.ToLower() == connectName.ToLower());
                             if (connect != null)
                             {
-                                Growl.Warning(new GrowlInfo { Message = $"已存在相同名称的连接名", WaitTime = 1, ShowDateTime = false });
+                                Growl.Warning(new GrowlInfo { Message = $"已存在相同的数据源名称", WaitTime = 1, ShowDateTime = false });
                                 return;
                             }
                             connectConfig = new ConnectConfigs()

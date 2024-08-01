@@ -37,7 +37,7 @@
                     Cursor="Hand"
                     FontWeight="Bold"
                     Foreground="{DynamicResource DarkPrimaryBrush}"
-                    Header="选择连接">
+                    Header="选择数据源">
                     <MenuItem.Icon>
                         <fa6:FontAwesome FontSize="15" Icon="Solid_AngleDown" />
                     </MenuItem.Icon>
@@ -88,7 +88,7 @@
                         Name="AddConnect"
                         Click="AddConnect_OnClick"
                         FontWeight="Normal"
-                        Header="新建连接">
+                        Header="数据源">
                         <MenuItem.Icon>
                             <Path
                                 Data="{StaticResource NewConnectGeometry}"

@@ -131,7 +131,7 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
                         hc:BorderElement.CornerRadius="5"
-                        hc:InfoElement.Placeholder="请选择连接"
+                        hc:InfoElement.Placeholder="请选择数据源"
                         Background="#F4F5F7"
                         BorderThickness="0"
                         Cursor="Hand"

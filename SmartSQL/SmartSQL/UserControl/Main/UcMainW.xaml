@@ -32,13 +32,13 @@
                         <Border
                             Name="BorderEffect"
                             Grid.RowSpan="2"
-                            Background="{DynamicResource RegionBrush}"
                             CornerRadius="10"
                             Effect="{StaticResource EffectShadow4}" />
                         <Border
                             Name="BorderTitle"
                             Grid.Row="0"
                             Height="32"
+                            Visibility="Collapsed"
                             Background="{DynamicResource TitleBrush}"
                             CornerRadius="10,10,0,0"
                             Style="{StaticResource BorderClip}">
@@ -87,7 +87,7 @@
                                 </hc:Drawer>
                             </hc:SimplePanel>
                         </Border>
-                        <Border Grid.Row="1" ClipToBounds="True">
+                        <Border Grid.Row="1" ClipToBounds="True" Margin="0 6 0 0">
                             <Grid>
                                 <local:UcMainColumns x:Name="MainColumn" />
                                 <local:UcMainObjects x:Name="MainObject" Visibility="Collapsed" />

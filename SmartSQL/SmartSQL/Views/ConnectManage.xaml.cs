@@ -236,7 +236,7 @@ namespace SmartSQL.Views
             var sqLiteHelper = new SQLiteHelper();
             if (ListConnects.SelectedItem == null)
             {
-                Growl.Warning(new GrowlInfo { Message = $"请选择需要删除的连接", WaitTime = 1, ShowDateTime = false });
+                Oops.Oh("请选择需要删除的数据源");
                 return;
             }
             var selectedConnect = (ConnectConfigs)ListConnects.SelectedItem;
