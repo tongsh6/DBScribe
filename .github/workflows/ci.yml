@@ -79,6 +79,9 @@ jobs:
       - name: 安装前端依赖
         working-directory: apps/desktop
         run: pnpm install --frozen-lockfile
+        env:
+          # pnpm 12 默认拒绝安装「刚发布」的依赖，CI 中需要关闭该检查
+          npm_config_minimum_release_age: "0"
 
       - name: 构建前端
         working-directory: apps/desktop
