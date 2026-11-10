@@ -647,7 +647,7 @@ button.link:hover {
 }
 
 .drawer {
-  width: min(560px, 92vw);
+  width: min(780px, 94vw);
   height: 100%;
   background: var(--panel);
   border-left: 1px solid var(--border);
@@ -698,6 +698,20 @@ button.link:hover {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+/* 固定列宽，避免窄列把中文表头挤成竖排 */
+.drawer-table table {
+  table-layout: fixed;
+}
+
+.drawer-table th {
+  white-space: nowrap;
+}
+
+.drawer-table td {
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* ---- 提示条关闭按钮 ---- */
