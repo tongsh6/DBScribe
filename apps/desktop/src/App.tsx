@@ -3,8 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ConnectionManager } from "./components/ConnectionManager";
+import { TableDetail } from "./components/TableDetail";
 import type {
   AppState,
+  ColumnView,
   ConnectionParams,
   ExportResult,
   HistoryEntry,
@@ -28,7 +30,6 @@ function errText(err: unknown): string {
 }
 
 function App() {
-  // 连接列表与当前连接
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -55,11 +56,18 @@ function App() {
   const [result, setResult] = useState<ExportResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
+  // 表结构预览
+  const [previewTable, setPreviewTable] = useState<TableSummary | null>(null);
+  const [previewColumns, setPreviewColumns] = useState<ColumnView[] | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
   const formatMeta = FORMATS.find((f) => f.value === format) ?? FORMATS[0];
   const activeConnection = useMemo(
     () => connections.find((c) => c.id === activeId) ?? null,
     [connections, activeId],
   );
+  const connected = databases.length > 0;
 
   const refreshState = useCallback(async (): Promise<AppState> => {
     const state = await invoke<AppState>("load_app_state");
@@ -69,7 +77,6 @@ function App() {
     return state;
   }, []);
 
-  /** 把某个已保存连接应用到表单，并清空库/表等派生状态 */
   const applyConnection = useCallback((c: SavedConnection) => {
     setActiveId(c.id);
     setConn({ host: c.host, port: c.port, user: c.user, password: "" });
@@ -81,7 +88,6 @@ function App() {
     setError("");
   }, []);
 
-  // 启动时恢复连接列表与历史
   useEffect(() => {
     refreshState()
       .then((state) => {
@@ -104,7 +110,6 @@ function App() {
     await invoke("set_active_connection", { id }).catch(() => undefined);
   };
 
-  /** 记住当前表单的连接信息（新增或更新当前连接） */
   const rememberConnection = useCallback(async () => {
     if (!remember) return;
     try {
@@ -152,7 +157,7 @@ function App() {
     try {
       const list = await invoke<TableSummary[]>("list_tables_cmd", { conn, database });
       setTables(list);
-      setSelected(new Set(list.map((t) => t.name))); // 默认全选
+      setSelected(new Set(list.map((t) => t.name)));
       await rememberConnection();
     } catch (e) {
       setTables([]);
@@ -162,6 +167,28 @@ function App() {
       setBusy(null);
     }
   }, [conn, database, rememberConnection]);
+
+  const openPreview = useCallback(
+    async (table: TableSummary) => {
+      setPreviewTable(table);
+      setPreviewColumns(null);
+      setPreviewError("");
+      setPreviewLoading(true);
+      try {
+        const columns = await invoke<ColumnView[]>("get_table_columns_cmd", {
+          conn,
+          database,
+          table: table.name,
+        });
+        setPreviewColumns(columns);
+      } catch (e) {
+        setPreviewError(errText(e));
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [conn, database],
+  );
 
   const visibleTables = useMemo(() => {
     const kw = filter.trim().toLowerCase();
@@ -301,13 +328,26 @@ function App() {
             <p>跨平台数据库结构文档工具</p>
           </div>
         </div>
+        <div className="status">
+          <span className={`dot ${connected ? "on" : ""}`} />
+          <span className="muted">
+            {connected
+              ? `${activeConnection?.name ?? conn.user + "@" + conn.host}`
+              : "未连接"}
+          </span>
+        </div>
       </header>
 
       <main>
-        {/* 左栏：连接与导出设置 */}
+        {/* 左栏：连接与数据库 */}
         <section className="panel left">
-          <h2>连接</h2>
-          <div className="row">
+          <div className="card">
+            <div className="card-head">
+              <h2>连接</h2>
+              <button className="small" onClick={() => setManagerOpen(true)}>
+                管理
+              </button>
+            </div>
             <select
               value={activeId ?? ""}
               onChange={(e) => selectConnection(e.target.value)}
@@ -316,106 +356,82 @@ function App() {
               {connections.length === 0 && <option value="">未保存的连接</option>}
               {connections.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}（{c.host}:{c.port}）
+                  {c.name}
                 </option>
               ))}
             </select>
-            <button onClick={() => setManagerOpen(true)}>管理</button>
-          </div>
 
-          <div className="row">
-            <div className="field grow">
-              <label>主机</label>
-              <input value={conn.host} onChange={(e) => setConn({ ...conn, host: e.target.value })} />
-            </div>
-            <div className="field" style={{ width: 96 }}>
-              <label>端口</label>
-              <input
-                type="number"
-                value={conn.port}
-                onChange={(e) => setConn({ ...conn, port: Number(e.target.value) || 3306 })}
-              />
-            </div>
-          </div>
-          <div className="field">
-            <label>用户</label>
-            <input value={conn.user} onChange={(e) => setConn({ ...conn, user: e.target.value })} />
-          </div>
-          <div className="field">
-            <label>密码</label>
-            <input
-              type="password"
-              value={conn.password}
-              placeholder="不会保存到本地"
-              onChange={(e) => setConn({ ...conn, password: e.target.value })}
-            />
-          </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            连接成功后保存该连接（不含密码）
-          </label>
-          <button className="primary" disabled={!!busy} onClick={testConnection}>
-            测试连接
-          </button>
-
-          <h2>数据库</h2>
-          <select
-            value={database}
-            onChange={(e) => setDatabase(e.target.value)}
-            disabled={databases.length === 0}
-          >
-            {databases.length === 0 && <option value="">请先测试连接</option>}
-            {databases.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <button disabled={!database || !!busy} onClick={loadTables}>
-            读取表结构
-          </button>
-
-          <h2>导出设置</h2>
-          <div className="field">
-            <label>格式</label>
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
-              {FORMATS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Sheet 模式</label>
-            <select
-              value={sheetMode}
-              onChange={(e) => setSheetMode(e.target.value)}
-              disabled={format !== "excel"}
-            >
-              <option value="multi">每个表一个 Sheet</option>
-              <option value="single">所有表放一个 Sheet</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>标题</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>导出目录</label>
             <div className="row">
-              <input value={outDir} onChange={(e) => setOutDir(e.target.value)} />
-              <button onClick={chooseDirectory} title="选择目录">
-                浏览…
-              </button>
+              <div className="field grow">
+                <label>主机</label>
+                <input
+                  value={conn.host}
+                  onChange={(e) => setConn({ ...conn, host: e.target.value })}
+                />
+              </div>
+              <div className="field" style={{ width: 92 }}>
+                <label>端口</label>
+                <input
+                  type="number"
+                  value={conn.port}
+                  onChange={(e) => setConn({ ...conn, port: Number(e.target.value) || 3306 })}
+                />
+              </div>
             </div>
+            <div className="row">
+              <div className="field grow">
+                <label>用户</label>
+                <input
+                  value={conn.user}
+                  onChange={(e) => setConn({ ...conn, user: e.target.value })}
+                />
+              </div>
+              <div className="field grow">
+                <label>密码</label>
+                <input
+                  type="password"
+                  value={conn.password}
+                  placeholder="不保存"
+                  onChange={(e) => setConn({ ...conn, password: e.target.value })}
+                />
+              </div>
+            </div>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              连接成功后保存该连接（不含密码）
+            </label>
+            <button className="primary" disabled={!!busy} onClick={testConnection}>
+              测试连接
+            </button>
           </div>
-          <button className="primary" disabled={!database || !!busy} onClick={doExport}>
-            导出{selectedCount > 0 ? `选中的 ${selectedCount} 张表` : ""}
-          </button>
+
+          <div className="card">
+            <div className="card-head">
+              <h2>数据库</h2>
+            </div>
+            <select
+              value={database}
+              onChange={(e) => setDatabase(e.target.value)}
+              disabled={databases.length === 0}
+            >
+              {databases.length === 0 && <option value="">请先测试连接</option>}
+              {databases.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <button disabled={!database || !!busy} onClick={loadTables}>
+              读取表结构
+            </button>
+          </div>
         </section>
 
-        {/* 右栏：表列表、结果与历史 */}
+        {/* 右栏：表列表 + 底部导出栏 */}
         <section className="panel right">
           <div className="toolbar">
             <div>
@@ -446,7 +462,12 @@ function App() {
             </div>
           )}
 
-          {busy && <div className="toast info">{busy}</div>}
+          {busy && (
+            <div className="toast info">
+              <span className="spinner" />
+              {busy}
+            </div>
+          )}
           {error && <div className="toast error">{error}</div>}
 
           {result && (
@@ -514,7 +535,18 @@ function App() {
                         />
                       </td>
                       <td className="num">{i + 1}</td>
-                      <td className="mono">{t.name}</td>
+                      <td className="mono">
+                        <button
+                          className="link"
+                          title="查看表结构"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPreview(t);
+                          }}
+                        >
+                          {t.name}
+                        </button>
+                      </td>
                       <td>{t.comment}</td>
                       <td className="num">{t.column_count}</td>
                     </tr>
@@ -549,6 +581,45 @@ function App() {
               </ul>
             )}
           </div>
+
+          {/* 底部固定导出栏 */}
+          <div className="export-bar">
+            <div className="field">
+              <label>格式</label>
+              <select value={format} onChange={(e) => setFormat(e.target.value)}>
+                {FORMATS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Sheet 模式</label>
+              <select
+                value={sheetMode}
+                onChange={(e) => setSheetMode(e.target.value)}
+                disabled={format !== "excel"}
+              >
+                <option value="multi">每表一个 Sheet</option>
+                <option value="single">单个 Sheet</option>
+              </select>
+            </div>
+            <div className="field grow">
+              <label>标题</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="field grow">
+              <label>导出目录</label>
+              <div className="row">
+                <input value={outDir} onChange={(e) => setOutDir(e.target.value)} />
+                <button onClick={chooseDirectory}>浏览…</button>
+              </div>
+            </div>
+            <button className="primary export-btn" disabled={!database || !!busy} onClick={doExport}>
+              导出{selectedCount > 0 ? ` ${selectedCount} 张表` : ""}
+            </button>
+          </div>
         </section>
       </main>
 
@@ -559,6 +630,15 @@ function App() {
         onClose={() => setManagerOpen(false)}
         onRefresh={refreshState}
         onUse={applyConnection}
+      />
+
+      <TableDetail
+        open={!!previewTable}
+        table={previewTable}
+        columns={previewColumns}
+        loading={previewLoading}
+        error={previewError}
+        onClose={() => setPreviewTable(null)}
       />
     </div>
   );

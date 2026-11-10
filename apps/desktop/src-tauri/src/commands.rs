@@ -3,8 +3,8 @@
 //! 数据相关逻辑全部复用 `dbs-db` / `dbs-doc`，与 CLI 共享同一套核心实现。
 
 use crate::models::{
-    AppState, ConnectionParams, ExportParams, ExportResult, HistoryEntry, RenamedSheet,
-    SavedConnection, TableSummary,
+    AppState, ColumnView, ConnectionParams, ExportParams, ExportResult, HistoryEntry,
+    RenamedSheet, SavedConnection, TableSummary,
 };
 use crate::store;
 use chrono::Local;
@@ -58,6 +58,33 @@ pub async fn list_tables_cmd(
             name: t.name,
             comment: t.comment,
             column_count: t.columns.len(),
+        })
+        .collect())
+}
+
+/// 读取单张表的列结构（界面预览用）。
+#[tauri::command]
+pub async fn get_table_columns_cmd(
+    conn: ConnectionParams,
+    database: String,
+    table: String,
+) -> Result<Vec<ColumnView>, String> {
+    let opts = mysql_options(&conn, &database);
+    let columns = dbs_db::load_table_columns(&opts, &table)
+        .await
+        .map_err(to_msg)?;
+    Ok(columns
+        .into_iter()
+        .map(|c| ColumnView {
+            order: c.order,
+            name: c.name,
+            data_type: c.data_type,
+            length: c.length,
+            is_primary_key: c.is_primary_key,
+            is_auto_increment: c.is_auto_increment,
+            nullable: c.nullable,
+            default_value: c.default_value,
+            comment: c.comment,
         })
         .collect())
 }

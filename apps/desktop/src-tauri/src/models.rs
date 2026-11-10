@@ -76,6 +76,20 @@ impl SavedConnection {
     }
 }
 
+/// 列详情（界面预览用）。
+#[derive(Debug, Clone, Serialize)]
+pub struct ColumnView {
+    pub order: u32,
+    pub name: String,
+    pub data_type: String,
+    pub length: String,
+    pub is_primary_key: bool,
+    pub is_auto_increment: bool,
+    pub nullable: bool,
+    pub default_value: String,
+    pub comment: String,
+}
+
 /// 一次导出记录。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {

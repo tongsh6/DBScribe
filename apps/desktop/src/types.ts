@@ -22,6 +22,19 @@ export interface TableSummary {
   column_count: number;
 }
 
+/** 列详情（表结构预览） */
+export interface ColumnView {
+  order: number;
+  name: string;
+  data_type: string;
+  length: string;
+  is_primary_key: boolean;
+  is_auto_increment: boolean;
+  nullable: boolean;
+  default_value: string;
+  comment: string;
+}
+
 export interface RenamedSheet {
   original: string;
   actual: string;

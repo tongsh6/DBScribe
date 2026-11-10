@@ -5,4 +5,4 @@
 
 pub mod mysql;
 
-pub use mysql::{list_databases, load_tables, MySqlOptions};
+pub use mysql::{list_databases, load_table_columns, load_tables, MySqlOptions};

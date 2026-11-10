@@ -80,6 +80,61 @@ async fn list_databases_with_pool(pool: &Pool) -> Result<Vec<String>> {
     Ok(names)
 }
 
+/// 单表列查询（用于界面预览）。
+const TABLE_COLUMN_SQL: &str = r#"
+SELECT ORDINAL_POSITION, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE,
+       COLUMN_KEY, EXTRA, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_COMMENT
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+ORDER BY ORDINAL_POSITION
+"#;
+
+/// 读取单张表的列信息（界面预览用，避免整库重查）。
+pub async fn load_table_columns(
+    opts: &MySqlOptions,
+    table: &str,
+) -> Result<Vec<dbs_core::ColumnInfo>> {
+    let builder = OptsBuilder::default()
+        .ip_or_hostname(opts.host.clone())
+        .tcp_port(opts.port)
+        .user(Some(opts.user.clone()))
+        .pass(Some(opts.password.clone()))
+        .db_name(Some(opts.database.clone()));
+
+    let pool = Pool::new(builder);
+    let result = async {
+        let mut conn = pool
+            .get_conn()
+            .await
+            .context("连接 MySQL 失败（请检查地址、端口、账号密码）")?;
+        let rows: Vec<Row> = conn
+            .exec(TABLE_COLUMN_SQL, (opts.database.as_str(), table))
+            .await
+            .context("查询列信息失败")?;
+        Ok(rows.iter().map(|row| map_column(row, 0)).collect())
+    }
+    .await;
+    pool.disconnect().await.ok();
+    result
+}
+
+/// 从一行查询结果映射列信息；`offset` 为第一个列字段的下标。
+fn map_column(row: &Row, offset: usize) -> dbs_core::ColumnInfo {
+    dbs_core::ColumnInfo {
+        order: get_u32(row, offset),
+        name: get_string(row, offset + 1),
+        data_type: get_string(row, offset + 2).to_lowercase(),
+        length: extract_length(&get_string(row, offset + 3)),
+        is_primary_key: get_string(row, offset + 4).eq_ignore_ascii_case("PRI"),
+        is_auto_increment: get_string(row, offset + 5)
+            .to_lowercase()
+            .contains("auto_increment"),
+        nullable: get_string(row, offset + 6).eq_ignore_ascii_case("YES"),
+        default_value: get_opt_string(row, offset + 7).unwrap_or_default(),
+        comment: get_string(row, offset + 8),
+    }
+}
+
 /// 读取指定库的全部基础表（不含视图）及其列信息。
 pub async fn load_tables(opts: &MySqlOptions) -> Result<Vec<TableInfo>> {
     let builder = OptsBuilder::default()
@@ -117,32 +172,11 @@ async fn load_with_pool(pool: &Pool, schema: &str) -> Result<Vec<TableInfo>> {
 
     for row in column_rows {
         let table_name = get_string(&row, 0);
-        let ordinal = get_u32(&row, 1);
-        let column_name = get_string(&row, 2);
-        let data_type = get_string(&row, 3);
-        let column_type = get_string(&row, 4);
-        let column_key = get_string(&row, 5);
-        let extra = get_string(&row, 6);
-        let is_nullable = get_string(&row, 7);
-        let default_value = get_opt_string(&row, 8);
-        let comment = get_string(&row, 9);
-
+        let column = map_column(&row, 1);
         columns_by_table
             .entry(table_name)
             .or_default()
-            .push(ColumnInfo {
-                order: ordinal,
-                name: column_name,
-                // 原版 Excel 的「数据类型」列显示基础类型（如 varchar）
-                data_type: data_type.to_lowercase(),
-                // 长度从 COLUMN_TYPE 的括号里取：varchar(64) -> 64，decimal(10,2) -> 10,2
-                length: extract_length(&column_type),
-                is_primary_key: column_key.eq_ignore_ascii_case("PRI"),
-                is_auto_increment: extra.to_lowercase().contains("auto_increment"),
-                nullable: is_nullable.eq_ignore_ascii_case("YES"),
-                default_value: default_value.unwrap_or_default(),
-                comment,
-            });
+            .push(column);
     }
 
     let mut tables = Vec::with_capacity(table_rows.len());

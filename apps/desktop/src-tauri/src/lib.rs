@@ -11,6 +11,7 @@ pub fn run() {
             commands::test_connection,
             commands::list_databases_cmd,
             commands::list_tables_cmd,
+            commands::get_table_columns_cmd,
             commands::load_app_state,
             commands::save_connection,
             commands::delete_connection,

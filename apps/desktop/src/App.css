@@ -54,7 +54,7 @@ body {
     Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .app {
@@ -64,9 +64,33 @@ body {
 }
 
 header {
-  padding: 12px 20px;
+  padding: 8px 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+}
+
+.dot.on {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
 }
 
 .brand {
@@ -76,8 +100,8 @@ header {
 }
 
 .logo {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
   background: var(--primary);
   color: #fff;
@@ -90,21 +114,22 @@ header {
 
 header h1 {
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
 }
 
 header p {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 14px;
-  padding: 14px;
+  grid-template-columns: 272px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
   overflow: hidden;
 }
 
@@ -112,10 +137,11 @@ main {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -146,9 +172,9 @@ main {
 input,
 select {
   width: 100%;
-  padding: 7px 9px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
@@ -161,9 +187,9 @@ select:focus {
 }
 
 button {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--panel);
   color: var(--text);
   font-size: 13px;
@@ -255,6 +281,7 @@ button:disabled {
 
 .table-wrap {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -515,4 +542,160 @@ button.danger {
 
 button.danger:hover:not(:disabled) {
   border-color: var(--error-text);
+}
+
+/* ---- 卡片分组 ---- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-head h2 {
+  margin: 0;
+}
+
+/* ---- 表名链接按钮 ---- */
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px dashed transparent;
+}
+
+button.link:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ---- 加载动画 ---- */
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- 底部导出栏 ---- */
+
+.export-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.export-bar .field {
+  min-width: 110px;
+}
+
+.export-bar .field.grow {
+  flex: 1;
+  min-width: 160px;
+}
+
+.export-btn {
+  height: 34px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+/* ---- 表结构预览抽屉 ---- */
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(560px, 92vw);
+  height: 100%;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: -14px 0 40px rgba(0, 0, 0, 0.18);
+  animation: slide-in 0.18s ease-out;
+  overflow: hidden;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawer-head h3 {
+  margin: 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.drawer-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.drawer-meta {
+  font-size: 12px;
+}
+
+.drawer-table {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
