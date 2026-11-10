@@ -10,6 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # 核心库与 CLI：三平台 fmt / clippy / test / 构建
   test:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -37,5 +38,51 @@ jobs:
       - name: 单元测试
         run: cargo test --workspace
 
-      - name: 构建 release
+      - name: 构建 CLI release
         run: cargo build --release --workspace
+
+  # 桌面端（Tauri）：三平台构建验证
+  desktop:
+    name: desktop-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 cargo 依赖
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Linux 桌面依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: 安装前端依赖
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建前端
+        working-directory: apps/desktop
+        run: pnpm build
+
+      - name: 构建桌面应用
+        run: cargo build --release --manifest-path apps/desktop/src-tauri/Cargo.toml

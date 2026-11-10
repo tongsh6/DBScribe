@@ -6,6 +6,8 @@ members = [
     "crates/dbs-doc",
     "crates/dbs-cli",
 ]
+# 桌面端（Tauri）独立构建，避免主 CI 依赖前端产物
+exclude = ["apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"

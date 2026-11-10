@@ -429,6 +429,8 @@ dependencies = [
  "chrono",
  "dbs-core",
  "rust_xlsxwriter",
+ "serde",
+ "serde_json",
  "tempfile",
  "tracing",
 ]

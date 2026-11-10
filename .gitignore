@@ -21,6 +21,11 @@ Cargo.lock.bak
 *.xls
 !legacy-dotnet/**/*.xlsx
 
+# ---- 前端（apps/desktop）----
+node_modules/
+apps/desktop/dist/
+*.tsbuildinfo
+
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/

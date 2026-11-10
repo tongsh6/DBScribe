@@ -12,14 +12,34 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 | --- | --- |
 | MySQL / MariaDB 元数据读取 | ✅ 可用 |
 | Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
+| Markdown / HTML / JSON / XML 导出 | ✅ 可用 |
+| 图形界面（Tauri 桌面应用） | ✅ 可用 |
 | PostgreSQL / SQL Server / SQLite / Oracle | 🚧 规划中 |
-| Markdown / HTML / JSON / XML 导出 | 🚧 规划中 |
-| 图形界面 | 🚧 规划中 |
 | CHM 导出 | 不计划（将提供 HTML 站点替代） |
+
+## 两种使用方式
+
+- **桌面应用**：图形界面完成「连接 → 选库 → 浏览表 → 导出」全流程，适合日常使用
+- **命令行**：可脚本化、可进 CI，适合批量与自动化
 
 ## 快速开始
 
-### 构建
+### 桌面应用
+
+前置：Node.js 20+、pnpm、Rust 1.80+，以及各平台的 Tauri 依赖
+（Windows 需 WebView2 与 MSVC 构建工具；macOS 需 Xcode 命令行工具；Linux 需 `libwebkit2gtk-4.1-dev` 等）。
+
+```bash
+cd apps/desktop
+pnpm install
+pnpm tauri dev      # 开发模式，热更新
+pnpm tauri build    # 打包当前平台安装包
+```
+
+界面流程：填写连接参数 → 测试连接 → 选择数据库 → 读取表结构（可搜索）→ 选择格式 / 输出目录 → 导出，
+结果区会显示表数量、耗时，以及被自动改名的工作表清单。
+
+### 命令行
 
 要求 Rust 1.80 及以上（`rustup` 安装即可，无需其他系统依赖）。
 
@@ -50,8 +70,15 @@ dbs export \
 | `--user` / `--password` | 账号；密码也可用环境变量 `DBS_PASSWORD` |
 | `--database` | 要导出的库名 |
 | `--out` | 输出 `.xlsx` 路径，目录会自动创建 |
-| `--sheet-mode` | `multi`（每表一个 Sheet，默认）或 `single`（全部表放一个 Sheet） |
+| `--sheet-mode` | `multi`（每表一个 Sheet，默认）或 `single`（全部表放一个 Sheet），仅 Excel 生效 |
+| `--format` | 输出格式：`excel`（默认）/ `markdown` / `html` / `json` / `xml`；缺省按 `--out` 扩展名推断 |
 | `--title` | 文档标题，缺省为「{数据库名}数据库设计文档」 |
+
+先看看有哪些库：
+
+```bash
+dbs databases --host 127.0.0.1 --user root
+```
 
 导出的工作簿包含三部分：**修订日志**、**目录**（可点击跳转）、**表结构**（序号 / 列名 / 数据类型 / 长度 / 主键 / 自增 / 允许空 / 默认值 / 列说明）。
 
@@ -87,8 +114,10 @@ DBScribe 由 `SheetNameAllocator` 统一分配工作表名：
 crates/
   dbs-core/   数据模型 + 工作表命名规则（纯逻辑，无外部依赖，含完整测试）
   dbs-db/     数据库元数据读取（information_schema）
-  dbs-doc/    文档生成（Excel / 后续 Markdown、HTML、JSON…）
+  dbs-doc/    文档生成（Excel / Markdown / HTML / JSON / XML）
   dbs-cli/    命令行入口
+apps/
+  desktop/    桌面应用（Tauri 2 + React），后端命令复用 dbs-db / dbs-doc
 legacy-dotnet/  早期 .NET 实现归档，仅作版式参照，不参与构建
 ```
 
@@ -97,9 +126,8 @@ legacy-dotnet/  早期 .NET 实现归档，仅作版式参照，不参与构建
 ## 路线图
 
 1. **补全数据库**：PostgreSQL、SQL Server、SQLite、Oracle
-2. **补全导出格式**：Markdown、HTML、JSON、XML
-3. **图形界面**：Web 前端 + 本地后端（三平台共用），或打包桌面壳
-4. **发布流程**：三平台构建，产出 `dbs` 单文件二进制
+2. **发布流程**：三平台安装包与 CLI 单文件二进制
+3. **界面增强**：按需勾选表、导出历史、连接配置保存
 
 ## 开发
 
