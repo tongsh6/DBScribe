@@ -6,6 +6,42 @@
 > 发布时由 `git-cliff` 依据 [cliff.toml](cliff.toml) 从 Conventional Commits 自动生成
 > 对应 tag 的 Release Notes；本文件汇总历次版本。
 
+## [0.4.0] - 2026-11-10
+
+数据库覆盖与文档质量的完整跃升：补齐 PostgreSQL / SQLite / SQL Server / Oracle / OceanBase / 达梦，
+文档开始包含外键、索引、分区等结构信息，新增 Word 格式与 ER 图。
+
+### 新功能
+
+- **db**：支持 **PostgreSQL**（系统目录读取表/列/注释/主键/自增/索引/外键/分区）
+- **db**：支持 **SQLite**（PRAGMA 读取，`INTEGER PRIMARY KEY` 识别为自增）
+- **db**：支持 **SQL Server**（sys 视图，含 identity / 扩展属性注释 / 索引 / 外键）
+- **db**：支持 **Oracle**（数据字典视图，identity 列、TIMESTAMP 三种精度、INTERVAL、XMLTYPE 等）
+- **db**：支持 **OceanBase**（MySQL 兼容协议，`--driver oceanbase`）
+- **db**：支持 **达梦 DM8**（ODBC，Windows / Linux）；应用内自动检测驱动并给出安装指引
+- **db**：Oracle 客户端**懒安装**——首次连接时自动下载 Instant Client（约 60MB），带进度反馈
+- **doc**：导出**外键关系**（列 → 引用表.列）
+- **doc**：导出**索引信息**（自动去重：主键索引与外键支撑索引不重复展示）
+- **doc**：导出**分区表**标记，并提供 `--skip-partitioned` 跳过选项
+- **doc**：多 schema 时自动把 schema 前缀并入表名，避免同名表混淆
+- **doc**：导出前按表名排序，序号随最终顺序重排
+- **doc**：新增 **Word（.docx）** 格式
+- **doc**：Markdown 输出 **Mermaid ER 图**（基于外键关系）
+
+### 问题修复
+
+- **doc**：列说明保留原始换行（Markdown `<br>`、Excel 自动换行、HTML `pre-wrap`）
+- **db**：修正达梦 `all_tab_columns` 无 `identity_column` 字段的兼容性问题
+- **db**：MySQL 连接显式 `SET NAMES utf8mb4`，避免中文注释乱码
+- **db**：SQLite 主键列不再错误显示为「允许空」
+- **db**：Oracle `NCHAR`/`NVARCHAR2` 长度按字符数而非字节数展示
+
+### 测试
+
+- 五个数据库各建「多表 + 全类型覆盖」测试库（MySQL 30 种、PostgreSQL 23 种、
+  SQLite 17 种、SQL Server 20 种、Oracle 17 种类型），逐个验证类型映射
+- 达梦用 Docker 实例验证数据字典 SQL（表/列/索引/外键/分区）
+
 ## [0.3.0] - 2026-11-10
 
 界面与交互的系统化重构：反馈体系、引导、错误可读性、设计规范、性能与可访问性。
@@ -77,6 +113,7 @@
 
 项目初始化：Rust workspace 骨架（`dbs-core` / `dbs-db` / `dbs-doc` / `dbs-cli`）。
 
+[0.4.0]: https://github.com/tongsh6/DBScribe/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/tongsh6/DBScribe/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/tongsh6/DBScribe/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tongsh6/DBScribe/releases/tag/v0.1.0
