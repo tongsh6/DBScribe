@@ -2,33 +2,27 @@
 *.suo
 *.user
 /.vs
-/SmartCode/SmartCode.Framework/bin/*
-/SmartCode/SmartCode.Framework/obj/*
-/SmartCode/SmartCode/obj/*
-/SmartCode/SmartCode/bin/*
-/SmartCode/SmartCode.Tool/obj/*
-/SmartCode/SmartCode.Tool/bin/*
-/SmartCode/SmartCode.DocUtils/obj/*
-/SmartCode/SmartCode.DocUtils/bin/*
-bin/*
-obj/*
-/bin/*
-/obj/*
-/SmartCode/SmartSQL/obj
-/SmartCode/SmartSQL/bin
-/SmartCode/SmartSQL.DocUtils/bin/Debug
-/SmartCode/SmartSQL.DocUtils/obj/Debug
-/SmartCode/SmartSQL.Framework/bin/Debug
-/SmartCode/SmartSQL.Framework/obj/Debug
-/SmartSQL/SmartSQL/bin
-/SmartSQL/SmartSQL/obj
-/SmartSQL/SmartSQL.DocUtils/bin/Debug
-/SmartSQL/SmartSQL.DocUtils/obj/Debug
-/SmartSQL/SmartSQL.Framework/bin/Debug
-/SmartSQL/SmartSQL.Framework/obj/Debug
-/SmartSQL/SmartSQL.DocUtils/bin/Release
-/SmartSQL/SmartSQL.Framework/bin/Release
-/SmartSQL/SmartSQL.Framework/obj/Release
-/SmartSQL/SmartSQL.DocUtils/obj/Release
-/SmartSQL/SmartSQL/.vs/SmartSQL.csproj.dtbcache.json
-/SmartSQL/SmartSQL.Framework/.vs/SmartSQL.Framework.csproj.dtbcache.json
+
+# ---- 上游 .NET 实现（仅作参照，不参与构建）----
+bin/
+obj/
+/legacy-dotnet/**/bin/
+/legacy-dotnet/**/obj/
+
+# ---- Rust ----
+/target/
+**/target/
+*.rs.bk
+Cargo.lock.bak
+
+# ---- 构建与导出产物 ----
+/out/
+*.xlsx
+*.xls
+!legacy-dotnet/**/*.xlsx
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

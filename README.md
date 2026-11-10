@@ -1,210 +1,144 @@
-<div align="center">
-   <img alt="SmartSQL" src="https://gitee.com/izhaofu/SmartSQL/raw/master/Img/icon.png">
-	<h1 align="center" style="color:#4da7fd"><b>SmartSQL</b></h1>
-</div>
-<div align="center">
-<h4 align="center">⚡一款方便、快捷的数据库文档查询、生成工具</h4>
-<span align="center" style="letter-spacing:1.8px" >致力于成为帮助企业快速实现数字化转型的元数据管理工具</span>
-</div>
-<br>
-<p align="center">
-<img alt="visual studio 2019" src="https://img.shields.io/badge/visual studio-2019/2022-blue.svg?logo=Visual%20studio&logoColor=bc8af3">
-<img alt="csharp" src="https://img.shields.io/badge/language-csharp-yellow.svg?logo=csharp">
-<img alt="license" src="https://img.shields.io/badge/license-apache-red.svg?logo=apache&logoColor=red">
-<img alt="release" src="https://img.shields.io/badge/release-1.0.4.2-green?logo=fontawesome&logoColor=green">
-</p>
-<p align="center">
-<img alt="框架" src="https://img.shields.io/badge/框架-WPF-success.svg?logo=dotnet&logoColor=violet">
-<img alt=".Net" src="https://img.shields.io/badge/版本-.Net 4.7.2-success.svg?logo=nuget&logoColor=24acf2">
-<img alt="支持系统" src="https://img.shields.io/badge/系统支持-win10/11-success.svg?logo=windows&logoColor=24acf2">
-</p>
+# DBScribe
 
-![首页](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/Banner_01.png)
+**跨平台的数据库结构文档工具** —— 读取数据库表结构，一键生成设计文档。
 
-### 🚩 项目介绍
+Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文件。
 
-SmartSQL 是一款方便、快捷的数据库文档查询、导出工具！从最初仅支持`SqlServer`数据库、`CHM`文档格式开始，通过不断地探索开发、集思广益和不断改进，又陆续支持`Word`、`Excel`、`PDF`、`Html`、`Xml`、`Json`、`MarkDown`等文档格式的导出。同时又扩展支持包括`SqlServer`、`MySql`、`PostgreSQL`、`SQLite`等多种数据库的文档查询和导出功能。
+> 本项目是 [dotnetchina/SmartSQL](https://gitee.com/dotnetchina/SmartSQL) 的跨平台重写。
+> 上游基于 .NET Framework + WPF，只能运行在 Windows；DBScribe 用 Rust 重新实现其核心能力，
+> 并修复了上游「多 Sheet 导出必然失败」的缺陷（详见下文）。
 
+---
 
-##### 🏅开源地址
-[![Gitee](https://shields.io/badge/Gitee-https://gitee.com/izhaofu/SmartSQL-green?logo=gitee&style=flat&logoColor=red)](https://gitee.com/izhaofu/SmartSQL)  <br/>
-[![GitHub](https://shields.io/badge/GitHub-https://github.com/TeslaFly01/SmartSqlT-green?logo=github&style=flat)](https://github.com/TeslaFly01/SmartSqlT)
+## 状态
 
+| 能力 | 状态 |
+| --- | --- |
+| MySQL / MariaDB 元数据读取 | ✅ 可用 |
+| Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
+| PostgreSQL / SQL Server / SQLite / Oracle | 🚧 规划中 |
+| Markdown / HTML / JSON / XML 导出 | 🚧 规划中 |
+| 图形界面 | 🚧 规划中 |
+| CHM 导出 | ⚠️ 上游依赖 Windows 专有的 `hhc.exe`，跨平台版本将以 HTML 站点替代 |
 
-##### 🎯下载地址
+## 快速开始
 
-码云： [https://gitee.com/izhaofu/SmartSQL/releases](https://gitee.com/izhaofu/SmartSQL/releases)  
+### 构建
 
-蓝奏云下载：[https://wwoc.lanzoum.com/b04dpvcxe](https://wwoc.lanzoum.com/b04dpvcxe)
+要求 Rust 1.80 及以上（`rustup` 安装即可，无需其他系统依赖）。
 
-蓝奏云密码：123
+```bash
+cargo build --release
+./target/release/dbs --help
+```
 
-> 文件下载解压后，双击运行 `SmartSQL.exe`即可
+### 导出数据库文档
 
-> 🚀 本项目力求做最方便、快捷的数据库文档查询生成工具！
+```bash
+# 建议用环境变量传密码，避免写进命令历史
+export DBS_PASSWORD='your-password'
 
-### 💎 数据库支持
-- ✅ SqlServer
-- ✅ MySQL
-- ✅ Oracle
-- ✅ PostgreSQL
-- ✅ SQLite
-- ✅ 达梦
-- - [x] DB2
-- - [x] TIDB
-- - [x] 瀚高
-- - [x] kingbase
+dbs export \
+  --driver mysql \
+  --host 127.0.0.1 --port 3306 \
+  --user root \
+  --database your_database \
+  --sheet-mode multi \
+  --out ./your_database.xlsx
+```
 
-### 📖 主要功能 
+| 参数 | 说明 |
+| --- | --- |
+| `--driver` | 数据库类型，当前支持 `mysql` |
+| `--host` / `--port` | 连接地址，端口缺省 3306 |
+| `--user` / `--password` | 账号；密码也可用环境变量 `DBS_PASSWORD` |
+| `--database` | 要导出的库名 |
+| `--out` | 输出 `.xlsx` 路径，目录会自动创建 |
+| `--sheet-mode` | `multi`（每表一个 Sheet，默认）或 `single`（全部表放一个 Sheet） |
+| `--title` | 文档标题，缺省为「{数据库名}数据库设计文档」 |
 
-#### 文档的内容都包含什么？
-- `表` 序号 | 列名 | 主键 | 自增 | 数据类型 | 长度 | 允许NULL值 | 默认值 | 备注说明
-- `视图` 视图内容SQL脚本
-- `存储过程` 存储过程内容SQL脚本
+导出的工作簿包含三部分：**修订日志**、**目录**（可点击跳转）、**表结构**（序号 / 列名 / 数据类型 / 长度 / 主键 / 自增 / 允许空 / 默认值 / 列说明）。
 
-#### 支持导出哪些文档格式？
-![CHM文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/chm.png) | ![Excel文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/excel.png) | ![Word文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/word.png) | ![PDF文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/pdf.png)
---|--|--|--
-![Html文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/html.png) | ![Xml文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/xml.png) | ![Json](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/json.png) | ![MarkDown](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/icon/markdown.png)
+---
 
-#### 更新表列的注释，有哪些方式？
-- 通过 `文件`➡`导入备注`，选择文件导入进行更新批注(注释)：
-    - 	[x] pdm 由`PowerDesigner`设计数据库时产生。
-    - 	[x] xml 由`Visual Studio`设置 实体类库的项目属性，勾选`XML文档文件`后生成项目时产生。
-    - 	[x] xml 由`SmartSQL`的 XML导出而产生。
-  
-#### 什么是分组管理
-- 可以对数据库中的表、视图、存储过程进行自定义分组
-- 可以对分组对象进行文档批量导出
+## 修复了上游的什么缺陷
 
-#### 功能架构
+### 多 Sheet 导出「没有任何结果」
 
-<div align="center">
-<img src="https://gitee.com/izhaofu/SmartSQL/raw/master/Img/MindMap.jpg" width="80%">
-</div>
+**现象**：SmartSQL 1.0.4.2 选择「多 Sheet（每个表一个 Sheet）」导出 Excel 后，目标目录里没有生成任何文件，也没有明显的错误提示。
 
-### 🎉 功能介绍
+**根因**（反编译 `SmartSQL.DocUtils.dll` 确认）：
 
-#### Dashbord
-![数据库连接](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Dashbord.png)
+多 Sheet 分支把数据库表名**原样**当作 Excel 工作表名：
 
-#### 工具箱
-![数据库连接](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/MainTool.png)
+```csharp
+foreach (TableDto item in tables)
+    CreateTableSheet(val, item.TableName, dto, new List<TableDto> { item });
+```
 
-#### 网站导航
-![数据库连接](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-SiteNav.png)
+而 Excel 对工作表名的限制是：**最长 31 个字符、不能包含 `: \ / ? * [ ]`、去重时不区分大小写**。
+EPPlus 4.0.5 会先截断、替换非法字符，再去重；一旦两张表截断后同名（或仅大小写不同），
+`Worksheets.Add()` 就抛 `InvalidOperationException: A worksheet with this name already exists`。
 
-#### 数据库连接
+此时 `ExportExcelByEpplus` **已经删除了同名旧文件**，而 `Save()` 还没执行 ——
+结果是：旧文件被删，新文件没生成。错误提示又是 HandyControl 的 Growl（`WaitTime = 1` 秒），
+一闪而过，看起来就像「点了没反应」。
 
-![数据库连接](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-ConnectType.png)|![数据库连接](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Connect.png)
---|--
+**典型触发条件**（一个 390 张表的真实库一次命中 6 组）：
 
-> 连接管理中可以对当前添加的连接进行`添加`、`修改`和`删除`等操作。
- 
-> 目前支持对`SQLServer`、`MySQL`、`Oracle`、`PostgreSQL`、`达梦`...等6种数据库的支持。
+- `T_EXHIBITION_EVENT_CONFIG` 与 `t_exhibition_event_config` —— 仅大小写不同
+- `t_landlord_presale_whitelist_file` 与 `t_landlord_presale_whitelist_file_member` —— 截断到 31 字符后同名
+- `t_store_themed_activities_questionnaire` / `_answer` / `_option` / `_question` —— 四张表截断后同名
 
-> 对`DB2`、`TIDB`、`瀚高`等其他关系型数据库的支持正在进行中。
+**DBScribe 的做法**：由 `SheetNameAllocator` 统一分配工作表名 ——
+清洗非法字符 → 按**字符数**截断（不会切断多字节汉字）→ 大小写不敏感去重 →
+冲突时追加 `_2` / `_3`，并让业务表名自动避让「目录」「修订日志」等固定工作表。
+导出结束会打印改名映射，**任何表都不会丢**：
 
-#### 分组管理
-![分组管理](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Group.png)|![分组管理](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-GroupObject.png)
---|--
+```text
+导出成功：arcteryx_dev.xlsx
+  表数量：390    工作表：392    模式：每表一个 Sheet
+  有 80 个工作表因名称超长/非法/重复而被自动改名（原版会直接导出失败）：
+    t_exhibition_event_config  ->  t_exhibition_event_config_2
+    t_landlord_presale_whitelist_file_member  ->  t_landlord_presale_whitelist__2
+    t_store_themed_activities_questionnaire_option  ->  t_store_themed_activities_que_3
+    ...
+```
 
->  在此可以对数据库中的`表`、`视图`、`存储过程`实现自定义分组，方便管理
+---
 
->  同时支持对分组进行排序，将鼠标放在需排序的分组上，当箭头变成➕就可以拖动排序了
+## 项目结构
 
->  对`常用的分组`可置为默认`展开`，`不常用的分组`置为默认`不展开`
+```text
+crates/
+  dbs-core/   数据模型 + 工作表命名规则（纯逻辑，无外部依赖，含完整测试）
+  dbs-db/     数据库元数据读取（information_schema）
+  dbs-doc/    文档生成（Excel / 后续 Markdown、HTML、JSON…）
+  dbs-cli/    命令行入口
+legacy-dotnet/  上游 .NET 实现归档，仅作功能与版式参照，不参与构建
+```
 
-#### 快捷查询
-| ![快捷查询](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Objects.png) | ![快捷查询](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-View.png) |
-|--|--|
-| ![快捷查询](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Proc.png) | ![快捷查询](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Column.png) |
+分层原则：`dbs-core` 不依赖任何驱动或文件格式库，便于未来接入 GUI 与更多数据库。
 
-> 支持左侧菜单快速检索对象
+## 路线图
 
-> 同时支持右侧主界面快速检索`表`、`列`、`视图`等信息
+1. **补全数据库**：PostgreSQL、SQL Server、SQLite、Oracle
+2. **补全导出格式**：Markdown、HTML、JSON、XML（对齐上游能力）
+3. **图形界面**：优先 Web 前端 + 本地后端，也可打包桌面壳，三平台共用
+4. **发布流程**：GitHub Actions 三平台构建，产出 `dbs` 单文件二进制
 
-> 最大亮点是支持双击`备注说明`列对应单元格快速设置对象注释信息
+## 开发
 
-> 对`视图`、`存储过程`支持一键查看内容结构、一键复制
+```bash
+cargo fmt --all                                   # 格式化
+cargo clippy --workspace --all-targets -- -D warnings   # 静态检查
+cargo test --workspace                            # 测试
+```
 
+CI 在 `ubuntu-latest` / `macos-latest` / `windows-latest` 三平台执行上述检查。
 
-#### 导入导出
+## 致谢与许可
 
-![导入备注](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Import.png)|![导出文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Export.png)
-:--:|:--:
-
-> 支持对`表`、`视图`、`存储过程`进行导出成多种格式的离线文档
-
-> 支持对`XML`格式的文档进行导入`表`、`列`、`视图`、`存储过程`注释
-
-#### 设置/关于
-![设置](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Setting.png) | ![关于](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-About.png)
---|--
-
-> 支持搜索时设置根据前缀模糊搜索和全量模糊搜索
-
-> 支持对右侧主界面设置多选项卡和单选项卡设置
-
-
-### 📰 文档截图
-
-#### CHM文档
-![CHM文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/chm.png)|![CHM文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/chmd.png)
-|--|--|
-
-#### Html文档
-![Html文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/html.png)|![html文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/htmlt.png)
-|--|--|
-
-#### Word文档
-![Word文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/word.png)|![Word文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/wordh.png)
-|--|--|
-
-#### Excel文档
-![Word文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/excel.png)|![Word文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/excelp.png)
-|--|--|
-
-#### PDF文档
-![PDF文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/pdf.png)|![PDF文档](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/docImg/pdfn.png)
-|--|--|
-
-
-### ⚡ 近期计划
-
-	✅ 收集问题，修复完善基础功能
-	✅ C#实体代码生成
-	⏳ 进行中：优化现有Issues中反馈的bug
-	⏳ 计划中：DB2、TIDB、达梦等数据库支持
-	⏳ 计划中：对象结构对比功能
-	⏳ 计划中：表、视图、存储过程同步功能
-	⏳ ...
-
-### 🔥 沟通交流
-
- ![](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-ContactQQ.png) | ![](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-Contact1.png) 
-|:--:|:--:|
-| QQ交流群：`666483672` | 作者微信号 |
-
- > 由于`微信群`限制`100`人后需群主邀请，如需加群请扫码上面二维码加好友本人拉你入群
-
- > 公众号也将每日定期分享`有趣`、`有料`、`有用`的开源项目，助力共同
-
-![](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/sshot-mp.png)
-
-
-### 🧧 赞赏作者
-
-	你的赞赏就是我前进的动力🏃，
-	如果SmartSQL给你带来了不少便利，
-	那就请作者喝杯咖啡☕吧。
-
-![](https://gitee.com/izhaofu/SmartSQL/raw/master/Img/zanshang.png)
-
-
-### ❓ 常见问题
-
--  [SmartSQL使用常见问题列表](https://gitee.com/dotnetchina/SmartSQL/blob/master/Question.md)
-- [Bug反馈](https://gitee.com/dotnetchina/SmartSQL/issues/new)
-
-> PS：如果你有更好方法，欢迎提供改善建议，助力✊该工具越来越好使！
+- 上游项目：[dotnetchina/SmartSQL](https://gitee.com/dotnetchina/SmartSQL)（Apache-2.0），感谢原作者的工作
+- `legacy-dotnet/` 保留上游 .NET 实现，用于对照功能与版式，不作为构建目标
+- 本项目沿用 **Apache-2.0** 许可，详见 [LICENSE](LICENSE)

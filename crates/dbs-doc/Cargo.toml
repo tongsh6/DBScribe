@@ -1,0 +1,17 @@
+[package]
+name = "dbs-doc"
+description = "DBScribe 文档生成层（Excel 等格式）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+dbs-core.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+rust_xlsxwriter = "0.102.0"
+
+[dev-dependencies]
+tempfile = "3"
