@@ -173,10 +173,7 @@ async fn load_with_pool(pool: &Pool, schema: &str) -> Result<Vec<TableInfo>> {
     for row in column_rows {
         let table_name = get_string(&row, 0);
         let column = map_column(&row, 1);
-        columns_by_table
-            .entry(table_name)
-            .or_default()
-            .push(column);
+        columns_by_table.entry(table_name).or_default().push(column);
     }
 
     let mut tables = Vec::with_capacity(table_rows.len());

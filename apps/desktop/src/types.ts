@@ -7,13 +7,15 @@ export interface ConnectionParams {
   password: string;
 }
 
-/** 已保存的数据库连接（不含密码） */
+/** 已保存的数据库连接（密码存于系统凭据管理器，不在此结构中） */
 export interface SavedConnection {
   id: string;
   name: string;
   host: string;
   port: number;
   user: string;
+  /** 是否已在系统凭据存储中保存了密码 */
+  has_password: boolean;
 }
 
 export interface TableSummary {

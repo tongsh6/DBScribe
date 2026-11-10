@@ -26,6 +26,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 dbs-core = { path = "../../../crates/dbs-core" }
 dbs-db = { path = "../../../crates/dbs-db" }
 dbs-doc = { path = "../../../crates/dbs-doc" }
+keyring = "4.2.0"
 
 [profile.release]
 codegen-units = 1

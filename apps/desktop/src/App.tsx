@@ -34,6 +34,7 @@ function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [rememberPassword, setRememberPassword] = useState(true);
 
   const [conn, setConn] = useState<ConnectionParams>({
     host: "127.0.0.1",
@@ -86,6 +87,15 @@ function App() {
     setSelected(new Set());
     setResult(null);
     setError("");
+
+    // 已保存密码的连接：自动从系统凭据管理器取回，免去重复输入
+    if (c.has_password) {
+      invoke<string | null>("get_connection_password", { id: c.id })
+        .then((pwd) => {
+          if (pwd) setConn((prev) => ({ ...prev, password: pwd }));
+        })
+        .catch(() => undefined);
+    }
   }, []);
 
   useEffect(() => {
@@ -123,12 +133,14 @@ function App() {
           port: conn.port,
           user: conn.user,
         },
+        // 记住密码：交给系统凭据管理器保存
+        password: rememberPassword && conn.password ? conn.password : null,
       });
       await refreshState();
     } catch {
       /* 记住连接失败不影响主流程 */
     }
-  }, [remember, activeConnection, conn, refreshState]);
+  }, [remember, rememberPassword, activeConnection, conn, refreshState]);
 
   const testConnection = useCallback(async () => {
     setBusy("正在连接数据库…");
@@ -402,7 +414,16 @@ function App() {
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              连接成功后保存该连接（不含密码）
+              连接成功后保存该连接
+            </label>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={rememberPassword}
+                disabled={!remember}
+                onChange={(e) => setRememberPassword(e.target.checked)}
+              />
+              同时记住密码（存入系统凭据管理器）
             </label>
             <button className="primary" disabled={!!busy} onClick={testConnection}>
               测试连接

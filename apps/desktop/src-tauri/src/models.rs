@@ -62,6 +62,9 @@ pub struct SavedConnection {
     pub host: String,
     pub port: u16,
     pub user: String,
+    /// 是否已在系统凭据存储中保存了密码
+    #[serde(default)]
+    pub has_password: bool,
 }
 
 impl SavedConnection {

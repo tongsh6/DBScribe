@@ -6,6 +6,7 @@ use crate::models::{
     AppState, ColumnView, ConnectionParams, ExportParams, ExportResult, HistoryEntry,
     RenamedSheet, SavedConnection, TableSummary,
 };
+use crate::secrets;
 use crate::store;
 use chrono::Local;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
@@ -95,11 +96,15 @@ pub async fn load_app_state(app: tauri::AppHandle) -> Result<AppState, String> {
     Ok(store::load(&app))
 }
 
-/// 新增或更新一个连接（不保存密码）；`id` 为空时由后端生成。保存后自动设为当前连接。
+/// 新增或更新一个连接；`id` 为空时由后端生成。
+///
+/// `password` 为 `Some(非空)` 时同步写入系统凭据存储，`Some("")` 表示清除已保存密码，
+/// `None` 表示不改变现有密码。保存后自动设为当前连接。
 #[tauri::command]
 pub async fn save_connection(
     app: tauri::AppHandle,
     conn: SavedConnection,
+    password: Option<String>,
 ) -> Result<SavedConnection, String> {
     let mut state = store::load(&app);
     let mut saved = conn;
@@ -113,9 +118,29 @@ pub async fn save_connection(
         state.connections.push(saved.clone());
     }
 
+    // 同步密码到系统凭据存储
+    if let Some(pwd) = password {
+        if pwd.is_empty() {
+            secrets::delete_password(&saved.id);
+            saved.has_password = false;
+        } else {
+            secrets::save_password(&saved.id, &pwd).map_err(to_msg)?;
+            saved.has_password = true;
+        }
+        if let Some(existing) = state.connections.iter_mut().find(|c| c.id == saved.id) {
+            existing.has_password = saved.has_password;
+        }
+    }
+
     state.active_connection = Some(saved.id.clone());
     store::save(&app, &state).map_err(to_msg)?;
     Ok(saved)
+}
+
+/// 读取某个连接在系统凭据存储中的密码。
+#[tauri::command]
+pub async fn get_connection_password(id: String) -> Result<Option<String>, String> {
+    Ok(secrets::load_password(&id))
 }
 
 /// 删除一个连接；若删除的是当前连接，自动切换到剩下的第一个。
@@ -123,6 +148,7 @@ pub async fn save_connection(
 pub async fn delete_connection(app: tauri::AppHandle, id: String) -> Result<(), String> {
     let mut state = store::load(&app);
     state.connections.retain(|c| c.id != id);
+    secrets::delete_password(&id);
     if state.active_connection.as_deref() == Some(id.as_str()) {
         state.active_connection = state.connections.first().map(|c| c.id.clone());
     }

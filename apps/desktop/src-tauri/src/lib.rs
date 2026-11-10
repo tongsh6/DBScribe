@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod secrets;
 mod store;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,6 +17,7 @@ pub fn run() {
             commands::save_connection,
             commands::delete_connection,
             commands::set_active_connection,
+            commands::get_connection_password,
             commands::clear_history,
             commands::export_document,
         ])
