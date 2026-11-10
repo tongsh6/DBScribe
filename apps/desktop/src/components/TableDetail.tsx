@@ -39,14 +39,14 @@ export function TableDetail({ open, table, columns, loading, error, onClose }: P
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: 34 }}>#</th>
-                  <th style={{ width: 168 }}>列名</th>
-                  <th style={{ width: 96 }}>类型</th>
-                  <th style={{ width: 52 }}>长度</th>
-                  <th style={{ width: 42 }}>主键</th>
-                  <th style={{ width: 42 }}>自增</th>
-                  <th style={{ width: 42 }}>可空</th>
-                  <th>注释</th>
+                  <th style={{ width: "4%" }}>#</th>
+                  <th style={{ width: "22%" }}>列名</th>
+                  <th style={{ width: "12%" }}>类型</th>
+                  <th style={{ width: "7%" }}>长度</th>
+                  <th style={{ width: "5%" }}>主键</th>
+                  <th style={{ width: "5%" }}>自增</th>
+                  <th style={{ width: "5%" }}>可空</th>
+                  <th style={{ width: "40%" }}>注释</th>
                 </tr>
               </thead>
               <tbody>

@@ -647,7 +647,7 @@ button.link:hover {
 }
 
 .drawer {
-  width: min(780px, 94vw);
+  width: min(1100px, 96vw);
   height: 100%;
   background: var(--panel);
   border-left: 1px solid var(--border);
@@ -700,9 +700,10 @@ button.link:hover {
   border-radius: 8px;
 }
 
-/* 固定列宽，避免窄列把中文表头挤成竖排 */
+/* 百分比列宽 + 固定布局：任何宽度都不会出现横向滚动条 */
 .drawer-table table {
   table-layout: fixed;
+  width: 100%;
 }
 
 .drawer-table th {
