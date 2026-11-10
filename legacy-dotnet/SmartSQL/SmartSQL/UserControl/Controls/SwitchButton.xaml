@@ -1,0 +1,31 @@
+﻿<UserControl
+    x:Class="SmartSQL.UserControl.Controls.SwitchButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <Border
+        Height="55"
+        Background="#f4f5f7"
+        CornerRadius="6"
+        Cursor="Hand"
+        MouseLeftButtonUp="Border_MouseLeftButtonUp">
+        <Grid>
+            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                <TextBlock FontSize="13" Text="{Binding Title}" />
+                <TextBlock
+                    Margin="0,3,0,0"
+                    FontSize="12"
+                    Foreground="#a0a0a0"
+                    Text="{Binding Description}" />
+            </StackPanel>
+            <ToggleButton
+                Margin="8"
+                HorizontalAlignment="Right"
+                IsChecked="{Binding IsChecked}"
+                Style="{StaticResource ToggleButtonSwitch}" />
+        </Grid>
+    </Border>
+</UserControl>

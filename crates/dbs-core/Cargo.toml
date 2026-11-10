@@ -1,0 +1,11 @@
+[package]
+name = "dbs-core"
+description = "DBScribe 核心数据模型与工作表命名规则"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,19 @@
+# 统一换行符为 LF，避免 Windows/macOS/Linux 协作时整文件 diff
+* text=auto eol=lf
+
+*.rs    text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# 二进制文件不做换行转换
+*.exe   binary
+*.dll   binary
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.svg   text

@@ -1,0 +1,113 @@
+<UserControl
+    x:Class="SmartSQL.UserControl.Connect.ConnectMainUC"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:baseControl="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    Loaded="ConnectMainUC_OnLoaded"
+    mc:Ignorable="d">
+    <Grid>
+        <!--  标题  -->
+        <Grid Height="40" VerticalAlignment="Top">
+            <Border BorderThickness="0" CornerRadius="8 8 0 0 ">
+                <Border.Background>
+                    <ImageBrush ImageSource="pack://application:,,,/Resources/Img/connect_bg.png" Stretch="Fill" />
+                </Border.Background>
+            </Border>
+            <StackPanel Margin="20,12,0,0" HorizontalAlignment="Left">
+                <TextBlock FontWeight="Bold" Foreground="#36425a">选择数据库类型</TextBlock>
+            </StackPanel>
+        </Grid>
+
+        <!--  数据库类型  -->
+        <ListBox
+            Margin="0,40,0,0"
+            Padding="0,30,0,30"
+            BorderThickness="0"
+            Cursor="Arrow"
+            ItemsPanel="{StaticResource FluidMoveBehaviorWrapPanelItemsPanelTemplate}"
+            Style="{StaticResource WrapPanelHorizontalListBox}">
+            <!--  SQLServer  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/sqlserver@64.svg"
+                DataBaseName="SQLServer"
+                IsEnabled="True" />
+
+            <!--  MySQL  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/mysql@64.svg"
+                DataBaseName="MySQL"
+                IsEnabled="True" />
+
+            <!--  PostgreSQL  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/postgresql@64.svg"
+                DataBaseName="PostgreSQL"
+                IsEnabled="True" />
+
+            <!--  SQLite  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/sqlite@64.svg"
+                DataBaseName="SQLite"
+                IsEnabled="True" />
+
+            <!--  Oracle  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/oracle@64.svg"
+                DataBaseName="Oracle"
+                IsEnabled="True" />
+
+            <!--  达梦  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/dameng.svg"
+                DataBaseName="达梦"
+                IsEnabled="True" />
+
+            <!--  Redis  -->
+            <!--<baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/icons/icon-redis.svg"
+                DataBaseName="Redis"
+                IsEnabled="True" />-->
+
+            <!--  DB2  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/ibm.svg"
+                DataBaseName="DB2"
+                IsEnabled="False" />
+
+            <!--  TIDB  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/TIDB@64.svg"
+                DataBaseName="TIDB"
+                IsEnabled="False" />
+
+            <!--  瀚高  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/hangao.svg"
+                DataBaseName="瀚高"
+                IsEnabled="False" />
+
+            <!--  人大金仓  -->
+            <baseControl:ConnectType
+                ClickCard="ConnectType_OnClickCard"
+                DataBaseIcon="pack://application:,,,/Resources/svg/kingbase.svg"
+                DataBaseName="人大金仓"
+                IsEnabled="False" />
+        </ListBox>
+    </Grid>
+</UserControl>

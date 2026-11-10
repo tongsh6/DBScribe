@@ -1,0 +1,283 @@
+<local:BaseUserControl
+    x:Class="SmartSQL.UserControl.UcMainColumns"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa6="http://schemas.fontawesome.com/icons/fonts"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:local="clr-namespace:SmartSQL.UserControl"
+    xmlns:localBase="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:system="clr-namespace:System;assembly=mscorlib"
+    mc:Ignorable="d">
+    <Grid>
+        <TabControl
+            x:Name="TabTable"
+            SelectionChanged="TabTable_OnSelectionChanged"
+            Style="{StaticResource TabControlInLine}">
+            <!--  Tab1：表/视图结构  -->
+            <TabItem
+                x:Name="TabStruct"
+                Cursor="Hand"
+                Header="数据表"
+                IsSelected="True">
+                <Grid Background="#ffffff">
+                    <!--  列名搜索框  -->
+                    <hc:SearchBar
+                        x:Name="SearchColumns"
+                        Height="30"
+                        Margin="5,5,5,0"
+                        Padding="5,0,5,0"
+                        VerticalAlignment="Top"
+                        HorizontalContentAlignment="Left"
+                        hc:InfoElement.Placeholder="搜索列名/备注说明"
+                        Background="#F4F5F7"
+                        BorderThickness="0"
+                        FontSize="13"
+                        ShowClearButton="True"
+                        Style="{StaticResource SearchBarPlus}"
+                        TextChanged="SearchColumns_OnTextChanged" />
+                    <!--  结构数据展现框  -->
+                    <Border
+                        Margin="5,40,5,37"
+                        Background="#f9f9f9"
+                        CornerRadius="8">
+                        <Grid>
+                            <DataGrid
+                                x:Name="TableGrid"
+                                hc:DataGridAttach.CanUnselectAllWithBlankArea="True"
+                                hc:DataGridAttach.ShowRowNumber="True"
+                                AutoGenerateColumns="False"
+                                Background="Transparent"
+                                BeginningEdit="TableGrid_OnBeginningEdit"
+                                CellEditEnding="TableGrid_OnCellEditEnding"
+                                Cursor="Arrow"
+                                HeadersVisibility="All"
+                                ItemsSource="{Binding ObjectColumns}"
+                                PreparingCellForEdit="TableGrid_OnPreparingCellForEdit"
+                                RowHeaderWidth="60"
+                                SelectedCellsChanged="TableGrid_OnSelectedCellsChanged"
+                                SelectionChanged="Handled_OnSelectionChanged"
+                                SelectionUnit="CellOrRowHeader">
+                                <DataGrid.CellStyle>
+                                    <Style BasedOn="{StaticResource DataGridCellStyle}" TargetType="DataGridCell">
+                                        <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Mode=Self}, Path=Content.Text}" />
+                                    </Style>
+                                </DataGrid.CellStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Binding="{Binding Name}"
+                                        Header="列名"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Binding="{Binding DataType}"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="数据类型"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Binding="{Binding LengthName}"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="长度"
+                                        IsReadOnly="True" />
+                                    <DataGridCheckBoxColumn
+                                        Binding="{Binding IsPrimaryKey}"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="主键"
+                                        IsReadOnly="True" />
+                                    <DataGridCheckBoxColumn
+                                        Binding="{Binding IsIdentity}"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="自增"
+                                        IsReadOnly="True" />
+                                    <DataGridCheckBoxColumn
+                                        Binding="{Binding IsNullable}"
+                                        CanUserResize="False"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="允许空"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Binding="{Binding DefaultValue}"
+                                        CanUserSort="False"
+                                        CellStyle="{StaticResource DataGridTextCenterColumnStyle}"
+                                        Header="默认值"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        Binding="{Binding Comment}"
+                                        Header="备注说明" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Grid
+                                x:Name="NoDataText"
+                                Margin="5"
+                                HorizontalAlignment="Stretch"
+                                Background="White"
+                                Cursor="Arrow"
+                                Visibility="Collapsed">
+                                <localBase:NoDataArea
+                                    Margin="0"
+                                    HorizontalAlignment="Center"
+                                    ShowType="Img" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Grid
+                        Height="36"
+                        VerticalAlignment="Bottom"
+                        Background="White"
+                        Cursor="Arrow">
+                        <hc:SimpleStackPanel
+                            Margin="5,0,5,5"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom">
+                            <hc:UniformSpacingPanel Spacing="10">
+                                <Button
+                                    x:Name="BtnSetTag"
+                                    Height="26"
+                                    Click="BtnSetTag_OnClick"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonSuccess}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Solid_Tags" />
+                                            <TextBlock Margin="5,-1,0,0" Text="设置标签" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
+                                <Button
+                                    x:Name="BtnSetGroup"
+                                    Height="26"
+                                    Click="BtnSetGroup_OnClick"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonWarning}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Regular_FolderOpen" />
+                                            <TextBlock Margin="5,-1,0,0" Text="设置分组" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
+                                <Button
+                                    x:Name="BtnGenCode"
+                                    Height="26"
+                                    Click="BtnGenCode_OnClick"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonPrimary}">
+                                    <Button.Content>
+                                        <StackPanel Orientation="Horizontal">
+                                            <fa6:FontAwesome FontSize="15" Icon="Brands_Magento" />
+                                            <TextBlock Margin="5,-1,0,0" Text="生成代码" />
+                                        </StackPanel>
+                                    </Button.Content>
+                                </Button>
+                            </hc:UniformSpacingPanel>
+                        </hc:SimpleStackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!--  Tab3：SQL脚本  -->
+            <TabItem
+                x:Name="TabSql"
+                Cursor="Hand"
+                Header="SQL脚本">
+                <Grid Margin="0" Background="#f5f5f5">
+                    <avalonedit:TextEditor
+                        x:Name="TextSqlEditor"
+                        Margin="0,0,0,32"
+                        Padding="5,0,0,0"
+                        FontFamily="新宋体"
+                        FontSize="12"
+                        IsReadOnly="True"
+                        ShowLineNumbers="True"
+                        WordWrap="True">
+                        <avalonedit:TextEditor.Options>
+                            <avalonedit:TextEditorOptions ShowSpaces="False">
+                                <avalonedit:TextEditorOptions.ColumnRulerPosition>
+                                    <system:Int32>10</system:Int32>
+                                </avalonedit:TextEditorOptions.ColumnRulerPosition>
+                            </avalonedit:TextEditorOptions>
+                        </avalonedit:TextEditor.Options>
+                    </avalonedit:TextEditor>
+                    <hc:GotoTop
+                        Margin="0,0,20,60"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Animated="True"
+                        AnimationTime="500"
+                        AutoHiding="True"
+                        Background="Transparent"
+                        Target="{Binding ElementName=TextSqlEditor}" />
+                    <Grid
+                        Height="36"
+                        VerticalAlignment="Bottom"
+                        Background="White"
+                        Cursor="Arrow">
+                        <hc:SimpleStackPanel
+                            Margin="5,0,5,5"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom">
+                            <hc:UniformSpacingPanel Spacing="10">
+                                <Button
+                                    x:Name="BtnSetTagExt"
+                                    Height="26"
+                                    hc:IconElement.Geometry="{StaticResource TagGeometry}"
+                                    Click="BtnSetTag_OnClick"
+                                    Content="设置标签"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonSuccess}" />
+                                <Button
+                                    x:Name="BtnSetGroupExt"
+                                    Height="26"
+                                    hc:IconElement.Geometry="{StaticResource SetGroupGeometry}"
+                                    Click="BtnSetGroup_OnClick"
+                                    Content="设置分组"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonWarning}" />
+                                <Button
+                                    x:Name="BtnFormat"
+                                    Height="26"
+                                    hc:IconElement.Geometry="{StaticResource PageModeGeometry}"
+                                    Click="BtnFormat_OnClick"
+                                    Content="格式化"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonInfo}" />
+                                <Button
+                                    x:Name="BtnCopyScript"
+                                    Height="26"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    hc:IconElement.Geometry="{StaticResource WindowRestoreGeometry}"
+                                    Click="BtnCopyScript_OnClick"
+                                    Content="复制脚本"
+                                    Cursor="Hand"
+                                    Style="{StaticResource ButtonPrimary}" />
+                            </hc:UniformSpacingPanel>
+                        </hc:SimpleStackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!--  Tab4：代码  -->
+            <TabItem
+                x:Name="TabCode"
+                Cursor="Hand"
+                Header="代码">
+                <Grid>
+                    <local:UcTabCode x:Name="UTabCode" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <localBase:Loading
+            x:Name="LoadingG"
+            Margin="0 30 0 0"
+            BackgroundOpacity="0.1"
+            Visibility="Collapsed" />
+    </Grid>
+</local:BaseUserControl>

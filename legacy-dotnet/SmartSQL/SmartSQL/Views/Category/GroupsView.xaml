@@ -1,0 +1,203 @@
+<hc:Window
+    x:Class="SmartSQL.Views.GroupsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa="http://schemas.fontawesome.io/icons/"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:local="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:dd="urn:gong-wpf-dragdrop"
+    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+    Title="{Binding Title}"
+    Width="850"
+    Height="500"
+    BorderThickness="0"
+    Icon="../../Resources/Img/icon_group.png"
+    Loaded="GroupManage_OnLoaded"
+    ResizeMode="CanResize"
+    ShowInTaskbar="False"
+    ShowTitle="True"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    <Grid Background="#f4f5f7">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" MinWidth="260" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <!--  左侧菜单  -->
+        <Border
+            Margin="5"
+            Padding="5,6,5,5"
+            Background="#ffffff"
+            CornerRadius="8">
+            <Grid>
+                <hc:SearchBar
+                    x:Name="SearchGroup"
+                    Height="30"
+                    Margin="5,5,45,5"
+                    Padding="5,0,5,0"
+                    VerticalAlignment="Top"
+                    hc:BorderElement.CornerRadius="5"
+                    hc:InfoElement.Placeholder="搜索分组"
+                    Background="#F4F5F7"
+                    BorderThickness="0"
+                    FontSize="13"
+                    MaxLength="30"
+                    ShowClearButton="True"
+                    Style="{StaticResource SearchBarPlus}"
+                    TextChanged="SearchTag_OnTextChanged" />
+                <Button
+                    Name="BtnAdd"
+                    Width="35"
+                    Margin="5"
+                    Padding="8,8"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    hc:IconElement.Geometry="{StaticResource AddGeometry}"
+                    Background="{StaticResource PrimaryBrush}"
+                    BorderThickness="0"
+                    Click="BtnAdd_OnClick"
+                    Foreground="#ffffff"
+                    ToolTip="新增分组" />
+                <ListBox
+                    Name="ListGroup"
+                    Margin="5,43,5,35"
+                    HorizontalContentAlignment="Stretch"
+                    AllowDrop="True"
+                    BorderThickness="0"          
+                    dd:DragDrop.IsDragSource="True"
+                    dd:DragDrop.IsDropTarget="True"    
+                    dd:DragDrop.UseDefaultDragAdorner="True"   
+                    dd:DragDrop.DropHandler="{Binding}"
+                    dd:DragDrop.DropTargetAdornerBrush="#326cf3"  
+                    ItemsSource="{Binding GroupMenuList}"                
+                    ScrollViewer.VerticalScrollBarVisibility="Visible"
+                    SelectionChanged="Selector_OnSelectionChanged">
+                    <!--  右键菜单  -->
+                    <ListBox.ContextMenu>
+                        <ContextMenu Width="180" Visibility="Visible">
+                            <MenuItem
+                                x:Name="MenuEdit"
+                                Padding="5,3,5,3"
+                                VerticalAlignment="Center"
+                                Click="MenuEdit_OnClick"
+                                Header="修改">
+                                <MenuItem.Icon>
+                                    <fa:FontAwesome
+                                        VerticalAlignment="Center"
+                                        FontSize="14"
+                                        Foreground="#1890ff"
+                                        Icon="Edit" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem
+                                x:Name="MenuDelete"
+                                Padding="5,3,5,3"
+                                VerticalAlignment="Center"
+                                Click="MenuDelete_OnClick"
+                                Header="删除">
+                                <MenuItem.Icon>
+                                    <fa:FontAwesome
+                                        VerticalAlignment="Center"
+                                        FontSize="14"
+                                        Foreground="#1890ff"
+                                        Icon="Remove" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
+
+                    <ListBox.ItemContainerStyle>
+                        <Style BasedOn="{StaticResource ListBoxItemBaseStyle}" TargetType="ListBoxItem">
+                            <Setter Property="Foreground" Value="#444e63" />
+                            <Setter Property="Margin" Value="0,3,0,0" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border
+                                            x:Name="Bd"
+                                            Padding="{TemplateBinding Padding}"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="5"
+                                            SnapsToDevicePixels="true">
+                                            <ContentPresenter
+                                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#f4f5f7" />
+                                    <Setter Property="Foreground" Value="#417FF9" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <!--  右键菜单  -->
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <hc:SimpleStackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                    <svgc:SvgViewbox
+                                        Width="12"
+                                        Height="12"
+                                        HorizontalAlignment="Left"
+                                        IsHitTestVisible="False"
+                                        Source="pack://application:,,,/Resources/svg/category.svg" />
+                                    <TextBlock
+                                        Margin="10,0,0,0"
+                                        Text="{Binding GroupName}"
+                                        TextTrimming="CharacterEllipsis" />
+                                </hc:SimpleStackPanel>
+                                <hc:SimpleStackPanel HorizontalAlignment="Right">
+                                    <Border Background="#fffffe" CornerRadius="3">
+                                        <TextBlock
+                                            Margin="5,1,5,1"
+                                            VerticalAlignment="Center"
+                                            Foreground="{StaticResource ThirdlyTextBrush}"
+                                            Text="{Binding SubCount}" />
+                                    </Border>
+                                </hc:SimpleStackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!--  暂无数据  -->
+                <Grid
+                    x:Name="NoDataText"
+                    Margin="5,100,5,65"
+                    HorizontalAlignment="Stretch"
+                    Background="White"
+                    Cursor="Arrow"
+                    Visibility="Collapsed">
+                    <local:NoDataArea
+                        x:Name="NoDataAreaText"
+                        Margin="0"
+                        HorizontalAlignment="Center"
+                        ShowType="All" />
+                </Grid>
+                <!--  暂无数据  -->
+            </Grid>
+        </Border>
+        <!--  左侧菜单  -->
+
+        <!--  右侧内容区  -->
+        <Border
+            Grid.Column="1"
+            Margin="0,5,5,5"
+            Background="White"
+            CornerRadius="8">
+            <UserControl Name="UcMainContent" Content="{Binding MainContent}" />
+        </Border>
+        <!--  右侧内容区  -->
+    </Grid>
+</hc:Window>

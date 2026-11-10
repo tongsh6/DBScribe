@@ -1,0 +1,64 @@
+<UserControl
+    x:Class="SmartSQL.UserControl.Controls.ExportLoading"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:emoji="clr-namespace:Emoji.Wpf;assembly=Emoji.Wpf"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+    IsVisibleChanged="HandleVisibleChanged"
+    Loaded="UserControl_Loaded"
+    mc:Ignorable="d">
+    <UserControl.Background>
+        <SolidColorBrush Opacity="{Binding BackgroundOpacity}" Color="Black" />
+    </UserControl.Background>
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="CirclesColor" Color="#FF007BE5" />
+    </UserControl.Resources>
+    <Border
+        Margin="120,80"
+        Background="White"
+        CornerRadius="8">
+        <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <StackPanel>
+                <svgc:SvgViewbox
+                    Width="150"
+                    Height="150"
+                    Source="/SmartSQL;component/Resources/svg/undraw/undraw_our_solution_re_8yk6.svg" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    Foreground="#3f3d56"
+                    Text="正在导出文档，请勿关闭窗口..." />
+            </StackPanel>
+            <StackPanel Margin="40,40,42,0">
+                <emoji:TextBlock
+                    Margin="0,0,0,-13"
+                    HorizontalAlignment="Left"
+                    FontSize="14"
+                    Text="👉🏻" />
+                <TextBlock
+                    x:Name="ProgressTitleText"
+                    Margin="23,0,0,-50"
+                    HorizontalAlignment="Left"
+                    FontSize="10"
+                    Foreground="#383c46"
+                    Text="{Binding ProgressTitle, Mode=TwoWay}" />
+                <TextBlock
+                    x:Name="ProgressTitleProgressText"
+                    HorizontalAlignment="Right"
+                    FontSize="10"
+                    Foreground="#383c46"
+                    Text="{Binding ProgressTitleNum, Mode=TwoWay}" />
+            </StackPanel>
+            <ProgressBar
+                x:Name="ProgressBar"
+                Margin="40,5,40,0"
+                HorizontalAlignment="Stretch"
+                Orientation="Horizontal"
+                ValueChanged="ProgressBar_OnValueChanged"
+                Value="{Binding ProgressNum}" />
+        </StackPanel>
+    </Border>
+</UserControl>

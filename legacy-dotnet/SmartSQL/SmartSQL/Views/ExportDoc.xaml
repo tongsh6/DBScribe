@@ -1,0 +1,370 @@
+<hc:Window
+    x:Class="SmartSQL.Views.ExportDoc"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa="http://schemas.fontawesome.io/icons/"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:local="clr-namespace:SmartSQL.Views"
+    xmlns:localBase="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:dd="urn:gong-wpf-dragdrop"
+    xmlns:models="clr-namespace:SmartSQL.Models"
+    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+    Title="导出文档"
+    Width="850"
+    Height="500"
+    BorderThickness="0"
+    Icon="../Resources/Img/icon_docfile.png"
+    Loaded="ExportDoc_OnLoaded"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    <Grid Background="#f4f5f7">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3.5*" MinWidth="220" />
+            <ColumnDefinition Width="6.5*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  左侧菜单  -->
+        <Border
+            Grid.Column="0"
+            Margin="5,5,0,5"
+            Background="{DynamicResource RegionBrush}"
+            CornerRadius="8">
+            <Grid
+                Height="Auto"
+                Margin="5"
+                Background="Transparent">
+                <TextBox x:Name="HidSelectDatabase" Visibility="Hidden" />
+                <Grid>
+                    <ComboBox
+                        x:Name="SelectDatabase"
+                        Height="30"
+                        VerticalAlignment="Top"
+                        HorizontalContentAlignment="Stretch"
+                        hc:BorderElement.CornerRadius="5"
+                        hc:InfoElement.Placeholder="请选择数据库"
+                        Background="#F4F5F7"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        IsTextSearchEnabled="True"
+                        SelectionChanged="SelectDatabase_OnSelectionChanged"
+                        Style="{StaticResource ComboBoxExtend}"
+                        Text="{Binding DbName}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                    <svgc:SvgViewbox
+                                        Width="12"
+                                        Height="12"
+                                        Source="/SmartSQL;component/Resources/svg/icons/icon-ic_database.svg" />
+                                    <TextBlock
+                                        Margin="5,0,0,0"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding DbName}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+                <hc:SearchBar
+                    x:Name="SearchMenu"
+                    Height="30"
+                    Margin="0,34,0,0"
+                    Padding="5,0,5,0"
+                    VerticalAlignment="Top"
+                    HorizontalContentAlignment="Stretch"
+                    hc:BorderElement.CornerRadius="5"
+                    hc:InfoElement.Placeholder="搜索表/视图/存储过程"
+                    Background="#F4F5F7"
+                    BorderThickness="0"
+                    FontSize="13"
+                    ShowClearButton="True"
+                    Style="{StaticResource SearchBarPlus}"
+                    TextChanged="SearchMenu_OnTextChanged" />
+
+                <TreeView
+                    x:Name="TreeViewTables"
+                    Margin="0,70,0,0"
+                    VerticalAlignment="Top"
+                    BorderThickness="0"
+                    ItemsSource="{Binding TreeViewData}"
+                    MouseLeftButtonUp="TreeViewTables_OnMouseLeftButtonUp">
+                    <TreeView.ItemContainerStyle>
+                        <Style BasedOn="{StaticResource TreeViewItemBaseStyle}" TargetType="{x:Type TreeViewItem}">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                            <Setter Property="FontWeight" Value="{Binding FontWeight}" />
+                            <Setter Property="FontSize" Value="12" />
+                            <Setter Property="Visibility" Value="{Binding Visibility}" />
+                            <Setter Property="Foreground" Value="#262e3e" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <!--  禁止水平滚动条自动滚动  -->
+                            <EventSetter Event="RequestBringIntoView" Handler="EventSetter_OnHandler" />
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type models:TreeNodeItem}" ItemsSource="{Binding Children, Mode=OneTime}">
+                            <StackPanel x:Name="staTree" Orientation="Horizontal">
+                                <CheckBox
+                                    VerticalAlignment="Center"
+                                    Focusable="False"
+                                    IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                                <svgc:SvgViewbox
+                                    Width="12"
+                                    Height="12"
+                                    Margin="5,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    IsHitTestVisible="False"
+                                    Source="{Binding Icon}" />
+                                <ContentPresenter Margin="5,0" Content="{Binding DisplayName, Mode=OneTime}" />
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+
+                <Grid
+                    x:Name="NoDataText"
+                    Margin="0,100,0,5"
+                    HorizontalAlignment="Stretch"
+                    Background="White"
+                    Cursor="Arrow">
+                    <localBase:NoDataArea
+                        x:Name="NoDataAreaText"
+                        Margin="0"
+                        HorizontalAlignment="Center"
+                        ShowType="All" />
+                </Grid>
+                <!--  数据加载Loading  -->
+                <localBase:Loading
+                    x:Name="LoadingLine"
+                    BackgroundOpacity="0.1"
+                    Visibility="Collapsed" />
+            </Grid>
+        </Border>
+
+        <!--  MainContent  -->
+        <Border
+            Name="Main"
+            Grid.Column="1"
+            Margin="5"
+            Background="White"
+            CornerRadius="8">
+            <Grid>
+                <!--  导出参数设置  -->
+                <Grid Margin="0,0,0,35">
+                    <Grid Margin="10,10,10,20">
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            VerticalAlignment="Top"
+                            Text="文档名称" />
+                        <hc:TextBox
+                            Name="TxtFileName"
+                            Height="30"
+                            Margin="65,0,0,0"
+                            VerticalAlignment="Top"
+                            Background="#F4F5F7"
+                            BorderThickness="0"
+                            ShowClearButton="True"
+                            TextChanged="TxtFileName_OnTextChanged" />
+                    </Grid>
+
+                    <Grid Margin="10,5,10,20">
+                        <TextBlock
+                            Margin="0,52,0,0"
+                            VerticalAlignment="Top"
+                            Text="输出路径" />
+
+                        <hc:ElementGroup
+                            Height="30"
+                            Margin="65,45,0,0"
+                            VerticalAlignment="Top"
+                            Orientation="Horizontal">
+                            <TextBox
+                                Name="TxtPath"
+                                Width="393"
+                                VerticalAlignment="Top"
+                                Background="#F4F5F7"
+                                BorderThickness="0" />
+                            <Button
+                                Name="BtnLookPath"
+                                Width="65"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource PrimaryBrush}"
+                                BorderThickness="0"
+                                Click="BtnLookPath_OnClick"
+                                Content="浏览"
+                                Cursor="Hand"
+                                Foreground="White" />
+                        </hc:ElementGroup>
+                    </Grid>
+
+                    <Grid Margin="10,87,10,20">
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            VerticalAlignment="Top"
+                            Text="文档类型" />
+                        <fa:FontAwesome
+                            Width="15"
+                            Height="15"
+                            Margin="18,30,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            FontSize="15"
+                            Foreground="#faad14"
+                            Icon="QuestionCircleOutline">
+                            <hc:Poptip.Instance>
+                                <hc:Poptip
+                                    Content="Excel、Word、Html文档仅支持导出表，其他文档类型都支持导出"
+                                    Foreground="#36425a"
+                                    PlacementType="Right" />
+                            </hc:Poptip.Instance>
+                        </fa:FontAwesome>
+                        <Border
+                            Height="85"
+                            Margin="65,3,0,8"
+                            VerticalAlignment="Top"
+                            Background="#f4f5f7"
+                            CornerRadius="6">
+                            <WrapPanel Name="ToggleWarpPanel" Margin="10,10,5,5">
+                                <ToggleButton
+                                    Name="Chm"
+                                    Width="80"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="CHM"
+                                    IsChecked="True"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Excel"
+                                    Width="80"
+                                    Margin="10,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="EXCEL"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Word"
+                                    Width="80"
+                                    Margin="10,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="WORD"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Pdf"
+                                    Width="80"
+                                    Margin="10,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="PDF"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Html"
+                                    Width="80"
+                                    Margin="10,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="HTML"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Xml"
+                                    Width="80"
+                                    Margin="0,10,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="XML"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="Json"
+                                    Width="80"
+                                    Margin="10,10,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="JSON"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                                <ToggleButton
+                                    Name="MD"
+                                    Width="80"
+                                    Margin="10,10,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Checked="Toggle_OnChecked"
+                                    Content="MD"
+                                    Style="{StaticResource DocTypeToggleStyle}" />
+                            </WrapPanel>
+
+                        </Border>
+                    </Grid>
+
+                    <Grid x:Name="SheetType" Visibility="Collapsed" Margin="10,149,10,20">
+                        <TextBlock
+                            Margin="0,52,0,0"
+                            VerticalAlignment="Top"
+                            Text="Sheet类型" />
+                        <StackPanel Margin="65,50,20,0" Orientation="Horizontal" VerticalAlignment="Top">
+                            <RadioButton
+                            x:Name="ChkSigleSheet"
+                            Content="单Sheet(所有表都在一个Sheet页)"
+                            IsChecked="True"
+                            Cursor="Hand" />
+                            <RadioButton
+                            x:Name="ChkMultipleSheet"
+                            Margin="28,0,0,0"
+                            Content="多Sheet(每个表一个Sheet页)"
+                            Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+
+                </Grid>
+
+                <!--  按钮栏  -->
+                <StackPanel
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Orientation="Horizontal">
+                    <Button
+                        x:Name="BtnExport"
+                        Height="25"
+                        Padding="20,0,20,0"
+                        Click="BtnExport_OnClick"
+                        Content="导出"
+                        Cursor="Hand"
+                        Style="{StaticResource ButtonPrimary}" />
+                    <Button
+                        x:Name="BtnCancel"
+                        Height="25"
+                        Margin="10"
+                        Padding="20,0,20,0"
+                        BorderBrush="#f0f0f0"
+                        Click="BtnCancel_OnClick"
+                        Content="取消"
+                        Cursor="Hand" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <!--  MainContent  -->
+
+        <!--  Loading动画  -->
+        <localBase:ExportLoading
+            x:Name="LoadingG"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            BackgroundOpacity="0.3"
+            Visibility="Collapsed" />
+        <!--  Loading动画  -->
+    </Grid>
+</hc:Window>

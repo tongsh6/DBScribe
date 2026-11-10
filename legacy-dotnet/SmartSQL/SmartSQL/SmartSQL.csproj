@@ -1,0 +1,1249 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{12909642-6A41-43B5-B2F8-1ED0E6FF132B}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>SmartSQL</RootNamespace>
+    <AssemblyName>SmartSQL</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <WarningLevel>4</WarningLevel>
+    <Deterministic>true</Deterministic>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug2\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit">
+      <Version>6.3.0.90</Version>
+    </PackageReference>
+    <PackageReference Include="ClosedXML">
+      <Version>0.102.2</Version>
+    </PackageReference>
+    <PackageReference Include="Costura.Fody">
+      <Version>3.2.0</Version>
+    </PackageReference>
+    <PackageReference Include="CsvHelper">
+      <Version>33.0.1</Version>
+    </PackageReference>
+    <PackageReference Include="Dirkster.MLib">
+      <Version>1.3.1.2</Version>
+    </PackageReference>
+    <PackageReference Include="Emoji.Wpf">
+      <Version>0.3.4</Version>
+    </PackageReference>
+    <PackageReference Include="FontAwesome.WPF">
+      <Version>4.7.0.9</Version>
+    </PackageReference>
+    <PackageReference Include="FontAwesome6.Fonts">
+      <Version>2.5.1</Version>
+    </PackageReference>
+    <PackageReference Include="FreeRedis">
+      <Version>1.2.11</Version>
+    </PackageReference>
+    <PackageReference Include="gong-wpf-dragdrop">
+      <Version>3.2.1</Version>
+    </PackageReference>
+    <PackageReference Include="HandyControl" Version="3.3.0" />
+    <PackageReference Include="hyjiacan.pinyin4net">
+      <Version>4.1.1</Version>
+    </PackageReference>
+    <PackageReference Include="JinianNet.JNTemplate">
+      <Version>2.3.1</Version>
+    </PackageReference>
+    <PackageReference Include="Material.Icons.WPF">
+      <Version>2.1.0</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAPICodePack-Shell">
+      <Version>1.1.0</Version>
+    </PackageReference>
+    <PackageReference Include="MySql.Data">
+      <Version>8.0.30</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.3</Version>
+    </PackageReference>
+    <PackageReference Include="NLog">
+      <Version>5.2.7</Version>
+    </PackageReference>
+    <PackageReference Include="Npgsql">
+      <Version>7.0.6</Version>
+    </PackageReference>
+    <PackageReference Include="Oracle.ManagedDataAccess">
+      <Version>19.21.0</Version>
+    </PackageReference>
+    <PackageReference Include="RazorEngine">
+      <Version>3.10.0</Version>
+    </PackageReference>
+    <PackageReference Include="RestSharp">
+      <Version>110.2.0</Version>
+    </PackageReference>
+    <PackageReference Include="SharpVectors">
+      <Version>1.8.0</Version>
+    </PackageReference>
+    <PackageReference Include="SimpleBase">
+      <Version>2.1.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Data.SQLite">
+      <Version>1.0.116</Version>
+    </PackageReference>
+    <PackageReference Include="ToolGood.Words">
+      <Version>3.0.3.3</Version>
+    </PackageReference>
+    <PackageReference Include="TSQL.Parser">
+      <Version>2.6.0</Version>
+    </PackageReference>
+    <PackageReference Include="VirtualizingWrapPanel">
+      <Version>1.5.8</Version>
+    </PackageReference>
+    <PackageReference Include="ZXing.Net">
+      <Version>0.16.8</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="AduSkin">
+      <HintPath>..\..\Lib\AduSkin.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationFramework" />
+    <Reference Include="ReachFramework" />
+    <Reference Include="SqlSugar">
+      <HintPath>..\..\Lib\SqlSugar.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Printing" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="Converts\ShowItemCountConvert.cs" />
+    <Compile Include="Converts\DisplayNameConvert.cs" />
+    <Compile Include="Helper\BarQrCodeHelper.cs" />
+    <Compile Include="Helper\DateTimeHelper.cs" />
+    <Compile Include="Helper\PingYinHelper.cs" />
+    <Compile Include="Helper\CsharpCompletionData.cs" />
+    <Compile Include="Helper\SqlCompletionData.cs" />
+    <Compile Include="Helper\TextEncryptHelper.cs" />
+    <Compile Include="Helper\Oops.cs" />
+    <Compile Include="Helper\SoftReg.cs" />
+    <Compile Include="Helper\StrUtil.cs" />
+    <Compile Include="Helper\TaskHelper.cs" />
+    <Compile Include="Helper\TruncateLongLines.cs" />
+    <Compile Include="Models\Api\CategoryApi.cs" />
+    <Compile Include="Models\Api\SiteApi.cs" />
+    <Compile Include="Models\DiffInfoModel.cs" />
+    <Compile Include="Models\ExecuteSQL.cs" />
+    <Compile Include="Models\MenuTagObjectsDTO.cs" />
+    <Compile Include="Models\PasswordResultDTO.cs" />
+    <Compile Include="Models\SysEnum.cs" />
+    <Compile Include="Models\MainTabWModel.cs" />
+    <Compile Include="Models\SObjectDTO.cs" />
+    <Compile Include="Models\TagObjectDTO.cs" />
+    <Compile Include="Models\UUIDResultDTO.cs" />
+    <Compile Include="Properties\Resource.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resource.resx</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\BaseUserControl.cs" />
+    <Compile Include="UserControl\Connect\ConnectMainUC.xaml.cs">
+      <DependentUpon>ConnectMainUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\DmUC .xaml.cs">
+      <DependentUpon>DmUC .xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\RedisUC.xaml.cs">
+      <DependentUpon>RedisUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\OracleUC.xaml.cs">
+      <DependentUpon>OracleUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\MySqlUC.xaml.cs">
+      <DependentUpon>MySqlUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\PostgreSqlUC.xaml.cs">
+      <DependentUpon>PostgreSqlUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\SqliteUC.xaml.cs">
+      <DependentUpon>SqliteUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Connect\SqlServerUC.xaml.cs">
+      <DependentUpon>SqlServerUC.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\ConnectType.xaml.cs">
+      <DependentUpon>ConnectType.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\ExportLoading.xaml.cs">
+      <DependentUpon>ExportLoading.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\SwitchButton.xaml.cs">
+      <DependentUpon>SwitchButton.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\UcToolCard.xaml.cs">
+      <DependentUpon>UcToolCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\NoDataArea.xaml.cs">
+      <DependentUpon>NoDataArea.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\SqlScript.xaml.cs">
+      <DependentUpon>SqlScript.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Dialog\About.xaml.cs">
+      <DependentUpon>About.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\GenCodes\UcGenTemplate.xaml.cs">
+      <DependentUpon>UcGenTemplate.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\GenCodes\UcGenCode.xaml.cs">
+      <DependentUpon>UcGenCode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Groups\UcAddGroupObject.xaml.cs">
+      <DependentUpon>UcAddGroupObject.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Groups\UcGroupObjects.xaml.cs">
+      <DependentUpon>UcGroupObjects.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainRedis.xaml.cs">
+      <DependentUpon>UcMainRedis.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainSite.xaml.cs">
+      <DependentUpon>UcMainSite.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainDbCompare.xaml.cs">
+      <DependentUpon>UcMainDbCompare.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainTools.xaml.cs">
+      <DependentUpon>UcMainTools.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainContent.xaml.cs">
+      <DependentUpon>UcMainContent.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainObjects.xaml.cs">
+      <DependentUpon>UcMainObjects.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainW.xaml.cs">
+      <DependentUpon>UcMainW.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcTabCode.xaml.cs">
+      <DependentUpon>UcTabCode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Redis\UcRedisInfo.xaml.cs">
+      <DependentUpon>UcRedisInfo.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Redis\UcRedisFrom.xaml.cs">
+      <DependentUpon>UcRedisFrom.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\SqlQuery\UcSqlQueryMain.xaml.cs">
+      <DependentUpon>UcSqlQueryMain.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tags\UcAddTagObject.xaml.cs">
+      <DependentUpon>UcAddTagObject.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tags\UcTagObjects.xaml.cs">
+      <DependentUpon>UcTagObjects.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcIcoToConvert.xaml.cs">
+      <DependentUpon>UcIcoToConvert.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcJson2CSharp.xaml.cs">
+      <DependentUpon>UcJson2CSharp.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcIcon.xaml.cs">
+      <DependentUpon>UcIcon.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcJsonToExcel.xaml.cs">
+      <DependentUpon>UcJsonToExcel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcRMB.xaml.cs">
+      <DependentUpon>UcRMB.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcHex.xaml.cs">
+      <DependentUpon>UcHex.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcLinuxCommand.xaml.cs">
+      <DependentUpon>UcLinuxCommand.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcFanTi.xaml.cs">
+      <DependentUpon>UcFanTi.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcUnicode.xaml.cs">
+      <DependentUpon>UcUnicode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcMimeType.xaml.cs">
+      <DependentUpon>UcMimeType.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcUrlEncode.xaml.cs">
+      <DependentUpon>UcUrlEncode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcBase64ToImg.xaml.cs">
+      <DependentUpon>UcBase64ToImg.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcJWT.xaml.cs">
+      <DependentUpon>UcJWT.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcDateDiff.xaml.cs">
+      <DependentUpon>UcDateDiff.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcStoryOfWords.xaml.cs">
+      <DependentUpon>UcStoryOfWords.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcRgbToHex.xaml.cs">
+      <DependentUpon>UcRgbToHex.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcQrCode.xaml.cs">
+      <DependentUpon>UcQrCode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcWordCount.xaml.cs">
+      <DependentUpon>UcWordCount.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcTextInsert.xaml.cs">
+      <DependentUpon>UcTextInsert.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcNPinYin.xaml.cs">
+      <DependentUpon>UcNPinYin.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcJsonFormatter.xaml.cs">
+      <DependentUpon>UcJsonFormatter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcBase64.xaml.cs">
+      <DependentUpon>UcBase64.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcUnixToConvert.xaml.cs">
+      <DependentUpon>UcUnixToConvert.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcUUIDGen.xaml.cs">
+      <DependentUpon>UcUUIDGen.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcPasswordGen.xaml.cs">
+      <DependentUpon>UcPasswordGen.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcSqlFormatter.xaml.cs">
+      <DependentUpon>UcSqlFormatter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcMD5.xaml.cs">
+      <DependentUpon>UcMD5.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Tools\UcToolMenu.xaml.cs">
+      <DependentUpon>UcToolMenu.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModels\MainTabWViewModel.cs" />
+    <Compile Include="ViewModels\ViewModelBase.cs" />
+    <Compile Include="Views\DownloadView.xaml.cs">
+      <DependentUpon>DownloadView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\GenCode.xaml.cs">
+      <DependentUpon>GenCode.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ToolBox.xaml.cs">
+      <DependentUpon>ToolBox.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\GroupAddView.xaml.cs">
+      <DependentUpon>GroupAddView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\SetTag.xaml.cs">
+      <DependentUpon>SetTag.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\TagAddView.xaml.cs">
+      <DependentUpon>TagAddView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\TagsView.xaml.cs">
+      <DependentUpon>TagsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Contact.xaml.cs">
+      <DependentUpon>Contact.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Donation.xaml.cs">
+      <DependentUpon>Donation.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AboutWindow.xaml.cs">
+      <DependentUpon>AboutWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ConnectManage.xaml.cs">
+      <DependentUpon>ConnectManage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExportDoc.xaml.cs">
+      <DependentUpon>ExportDoc.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Main\UcMainColumns.xaml.cs">
+      <DependentUpon>UcMainColumns.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl\Controls\Loading.xaml.cs">
+      <DependentUpon>Loading.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\GroupsView.xaml.cs">
+      <DependentUpon>GroupsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ImportMark.xaml.cs">
+      <DependentUpon>ImportMark.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ScriptWindow.xaml.cs">
+      <DependentUpon>ScriptWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Category\SetGroup.xaml.cs">
+      <DependentUpon>SetGroup.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\SettingWindow.xaml.cs">
+      <DependentUpon>SettingWindow.xaml</DependentUpon>
+    </Compile>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Helper\HighlightingProvider.cs" />
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Page Include="Resources\Themes\Basic\Basic.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Basic\Colors\Colors.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Basic\Colors\ColorsDark.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Basic\FontAwesome6.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Themes\Basic\Geometries.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Styles\DataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\SkinDark.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\SkinDefault.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Styles\GridSplitter.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Themes\Styles\Style.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Resources\Themes\Styles\ToggleButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\Themes\Theme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\ConnectMainUC.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\DmUC .xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\RedisUC.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\OracleUC.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\MySqlUC.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\PostgreSqlUC.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Connect\SqliteUC.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Connect\SqlServerUC.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Controls\ConnectType.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Controls\ExportLoading.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Controls\SwitchButton.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Controls\UcToolCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Controls\NoDataArea.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Controls\SqlScript.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Dialog\About.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\GenCodes\UcGenTemplate.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\GenCodes\UcGenCode.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Groups\UcAddGroupObject.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Groups\UcGroupObjects.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainRedis.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainSite.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainDbCompare.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainTools.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainContent.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Main\UcMainObjects.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Main\UcMainW.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Main\UcTabCode.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Redis\UcRedisInfo.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Redis\UcRedisFrom.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\SqlQuery\UcSqlQueryMain.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tags\UcAddTagObject.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tags\UcTagObjects.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Tools\UcIcoToConvert.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcJson2CSharp.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcIcon.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcJsonToExcel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcRMB.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcHex.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcLinuxCommand.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcFanTi.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcUnicode.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcMimeType.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcUrlEncode.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcBase64ToImg.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcJWT.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcDateDiff.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcStoryOfWords.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcRgbToHex.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcQrCode.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcWordCount.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcTextInsert.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcNPinYin.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcJsonFormatter.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcBase64.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcUnixToConvert.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcUUIDGen.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcPasswordGen.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcSqlFormatter.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcMD5.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Tools\UcToolMenu.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\DownloadView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\GenCode.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\ToolBox.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Category\GroupAddView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Category\SetTag.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Category\TagAddView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Category\TagsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Contact.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Donation.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\AboutWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\ConnectManage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\ExportDoc.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControl\Main\UcMainColumns.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UserControl\Controls\Loading.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Category\GroupsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\ImportMark.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ScriptWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Category\SetGroup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\SettingWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\NotifyPropertyBase.cs" />
+    <Compile Include="Models\TreeNodeItem.cs" />
+    <Compile Include="Properties\Annotations.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SmartSQL.DocUtils\SmartSQL.DocUtils.csproj">
+      <Project>{84e6e445-cfe0-4f01-b815-14f69f682eb9}</Project>
+      <Name>SmartSQL.DocUtils</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SmartSQL.Framework\SmartSQL.Framework.csproj">
+      <Project>{8f686dd2-388c-4d61-a077-3a769059d547}</Project>
+      <Name>SmartSQL.Framework</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="FodyWeavers.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <Resource Include="Resources\xshd\Coco-Mode.xshd" />
+    <Resource Include="Resources\xshd\CPP-Mode.xshd" />
+    <Resource Include="Resources\xshd\CSharp-Mode.xshd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\xshd\CSS-Mode.xshd" />
+    <Resource Include="Resources\xshd\HTML-Mode.xshd" />
+    <Resource Include="Resources\xshd\Java-Mode.xshd" />
+    <Resource Include="Resources\xshd\JavaScript-Mode.xshd" />
+    <Resource Include="Resources\xshd\Json.xshd" />
+    <Resource Include="Resources\xshd\MarkDown-Mode.xshd" />
+    <Resource Include="Resources\xshd\PHP-Mode.xshd" />
+    <Resource Include="Resources\xshd\Python-Mode.xshd" />
+    <Resource Include="Resources\xshd\Tex-Mode.xshd" />
+    <Resource Include="Resources\xshd\TSQL-Mode.xshd" />
+    <Resource Include="Resources\xshd\XML-Mode.xshd" />
+    <Resource Include="Resources\Fonts\iconfont.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\xshd\SQL.xshd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\xshd\CSharp-Dark.xshd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\xshd\SQL-Dark.xshd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\xshd\XML-Dark.xshd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="favicon.ico" />
+    <Resource Include="Resources\Img\dataBase.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\cloud.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="FodyWeavers.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Resources\Img\toolIcon\jsonToExcel%402x.png" />
+    <Resource Include="Resources\svg\floder.svg" />
+    <Resource Include="Resources\svg\redis.svg" />
+    <Resource Include="Resources\Img\icon\icon_sqlQuery.png" />
+    <Resource Include="Resources\svg\sqlQuery.svg" />
+    <Resource Include="Resources\svg\icons\icon-AnalyticDB.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-5g.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-c.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-c1.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-iconai.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-iconunique.svg" />
+    <Resource Include="Resources\svg\icons\icon-a-ziyuan1.svg" />
+    <Resource Include="Resources\svg\icons\icon-account.svg" />
+    <Resource Include="Resources\svg\icons\icon-add.svg" />
+    <Resource Include="Resources\svg\icons\icon-alert.svg" />
+    <Resource Include="Resources\svg\icons\icon-alipay.svg" />
+    <Resource Include="Resources\svg\icons\icon-aliyun.svg" />
+    <Resource Include="Resources\svg\icons\icon-arr_left1.svg" />
+    <Resource Include="Resources\svg\icons\icon-arr_right1.svg" />
+    <Resource Include="Resources\svg\icons\icon-aws.svg" />
+    <Resource Include="Resources\svg\icons\icon-azure.svg" />
+    <Resource Include="Resources\svg\icons\icon-baiducloud.svg" />
+    <Resource Include="Resources\svg\icons\icon-bind.svg" />
+    <Resource Include="Resources\svg\icons\icon-bottomadd.svg" />
+    <Resource Include="Resources\svg\icons\icon-bottomcancle.svg" />
+    <Resource Include="Resources\svg\icons\icon-bottomminus.svg" />
+    <Resource Include="Resources\svg\icons\icon-bottomsubmit.svg" />
+    <Resource Include="Resources\svg\icons\icon-chatgpt.svg" />
+    <Resource Include="Resources\svg\icons\icon-ck.svg" />
+    <Resource Include="Resources\svg\icons\icon-clone.svg" />
+    <Resource Include="Resources\svg\icons\icon-cloud-sync.svg" />
+    <Resource Include="Resources\svg\icons\icon-code.svg" />
+    <Resource Include="Resources\svg\icons\icon-columns1.svg" />
+    <Resource Include="Resources\svg\icons\icon-command.svg" />
+    <Resource Include="Resources\svg\icons\icon-Console-SQL.svg" />
+    <Resource Include="Resources\svg\icons\icon-constraints.svg" />
+    <Resource Include="Resources\svg\icons\icon-control.svg" />
+    <Resource Include="Resources\svg\icons\icon-csv.svg" />
+    <Resource Include="Resources\svg\icons\icon-current.svg" />
+    <Resource Include="Resources\svg\icons\icon-cut.svg" />
+    <Resource Include="Resources\svg\icons\icon-database02.svg" />
+    <Resource Include="Resources\svg\icons\icon-datacopy.svg" />
+    <Resource Include="Resources\svg\icons\icon-dataexport.svg" />
+    <Resource Include="Resources\svg\icons\icon-dataimpprt.svg" />
+    <Resource Include="Resources\svg\icons\icon-ddl.svg" />
+    <Resource Include="Resources\svg\icons\icon-dictionary2.svg" />
+    <Resource Include="Resources\svg\icons\icon-diff.svg" />
+    <Resource Include="Resources\svg\icons\icon-doris.svg" />
+    <Resource Include="Resources\svg\icons\icon-download.svg" />
+    <Resource Include="Resources\svg\icons\icon-edition_enterprise.svg" />
+    <Resource Include="Resources\svg\icons\icon-edition_free.svg" />
+    <Resource Include="Resources\svg\icons\icon-edition_pro.svg" />
+    <Resource Include="Resources\svg\icons\icon-elasticsearch.svg" />
+    <Resource Include="Resources\svg\icons\icon-empty.svg" />
+    <Resource Include="Resources\svg\icons\icon-executesingle.svg" />
+    <Resource Include="Resources\svg\icons\icon-fund.svg" />
+    <Resource Include="Resources\svg\icons\icon-github.svg" />
+    <Resource Include="Resources\svg\icons\icon-golang.svg" />
+    <Resource Include="Resources\svg\icons\icon-google.svg" />
+    <Resource Include="Resources\svg\icons\icon-googleCloud.svg" />
+    <Resource Include="Resources\svg\icons\icon-home.svg" />
+    <Resource Include="Resources\svg\icons\icon-huawei.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_disconnected.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_enterpriseE.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_handle.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_location.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_ninedata.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_paste02.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_pending.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_proxy.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_trial.svg" />
+    <Resource Include="Resources\svg\icons\icon-icon_vpc.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_add.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_arrow_full.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_company-01.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_compress.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_database.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_dataset.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_defaultenterprise.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_expend.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_file.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_fire01.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_fire02.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_fire03.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_linux.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_masos.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_mysql.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_page.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_profile.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_sqlserver.svg" />
+    <Resource Include="Resources\svg\icons\icon-ic_windows.svg" />
+    <Resource Include="Resources\svg\icons\icon-idc.svg" />
+    <Resource Include="Resources\svg\icons\icon-img_support.svg" />
+    <Resource Include="Resources\svg\icons\icon-img_upgrade.svg" />
+    <Resource Include="Resources\svg\icons\icon-income.svg" />
+    <Resource Include="Resources\svg\icons\icon-index.svg" />
+    <Resource Include="Resources\svg\icons\icon-index1.svg" />
+    <Resource Include="Resources\svg\icons\icon-invoice.svg" />
+    <Resource Include="Resources\svg\icons\icon-java.svg" />
+    <Resource Include="Resources\svg\icons\icon-java1.svg" />
+    <Resource Include="Resources\svg\icons\icon-json.svg" />
+    <Resource Include="Resources\svg\icons\icon-json02.svg" />
+    <Resource Include="Resources\svg\icons\icon-kafka.svg" />
+    <Resource Include="Resources\svg\icons\icon-key.svg" />
+    <Resource Include="Resources\svg\icons\icon-list02.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_account.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_ding.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_feishu.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_github.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_google.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_qq.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_sso.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_sso1.svg" />
+    <Resource Include="Resources\svg\icons\icon-login_wechat.svg" />
+    <Resource Include="Resources\svg\icons\icon-mail.svg" />
+    <Resource Include="Resources\svg\icons\icon-mapping.svg" />
+    <Resource Include="Resources\svg\icons\icon-mariadb.svg" />
+    <Resource Include="Resources\svg\icons\icon-mastermode.svg" />
+    <Resource Include="Resources\svg\icons\icon-mongodb.svg" />
+    <Resource Include="Resources\svg\icons\icon-monitor.svg" />
+    <Resource Include="Resources\svg\icons\icon-more.svg" />
+    <Resource Include="Resources\svg\icons\icon-nodejs.svg" />
+    <Resource Include="Resources\svg\icons\icon-oceanbase.svg" />
+    <Resource Include="Resources\svg\icons\icon-optimizeSQL.svg" />
+    <Resource Include="Resources\svg\icons\icon-oracle.svg" />
+    <Resource Include="Resources\svg\icons\icon-organization2_fill.svg" />
+    <Resource Include="Resources\svg\icons\icon-outcome.svg" />
+    <Resource Include="Resources\svg\icons\icon-pg1.svg" />
+    <Resource Include="Resources\svg\icons\icon-pin.svg" />
+    <Resource Include="Resources\svg\icons\icon-polardb.svg" />
+    <Resource Include="Resources\svg\icons\icon-privateGateway.svg" />
+    <Resource Include="Resources\svg\icons\icon-python.svg" />
+    <Resource Include="Resources\svg\icons\icon-qiyeweixin.svg" />
+    <Resource Include="Resources\svg\icons\icon-redis.svg" />
+    <Resource Include="Resources\svg\icons\icon-redshift.svg" />
+    <Resource Include="Resources\svg\icons\icon-rename.svg" />
+    <Resource Include="Resources\svg\icons\icon-rightSQL-copy.svg" />
+    <Resource Include="Resources\svg\icons\icon-rlspolicy.svg" />
+    <Resource Include="Resources\svg\icons\icon-rules.svg" />
+    <Resource Include="Resources\svg\icons\icon-rust.svg" />
+    <Resource Include="Resources\svg\icons\icon-safetycertificate-f.svg" />
+    <Resource Include="Resources\svg\icons\icon-schema.svg" />
+    <Resource Include="Resources\svg\icons\icon-selectall1.svg" />
+    <Resource Include="Resources\svg\icons\icon-selectdb.svg" />
+    <Resource Include="Resources\svg\icons\icon-send-fill.svg" />
+    <Resource Include="Resources\svg\icons\icon-server.svg" />
+    <Resource Include="Resources\svg\icons\icon-share.svg" />
+    <Resource Include="Resources\svg\icons\icon-skip_fill.svg" />
+    <Resource Include="Resources\svg\icons\icon-sql.svg" />
+    <Resource Include="Resources\svg\icons\icon-sql_opt.svg" />
+    <Resource Include="Resources\svg\icons\icon-stmt.svg" />
+    <Resource Include="Resources\svg\icons\icon-stop_fill.svg" />
+    <Resource Include="Resources\svg\icons\icon-Storedprocedure.svg" />
+    <Resource Include="Resources\svg\icons\icon-table.svg" />
+    <Resource Include="Resources\svg\icons\icon-table1.svg" />
+    <Resource Include="Resources\svg\icons\icon-tableedit.svg" />
+    <Resource Include="Resources\svg\icons\icon-tencentcloud.svg" />
+    <Resource Include="Resources\svg\icons\icon-tidb.svg" />
+    <Resource Include="Resources\svg\icons\icon-togglebottom1.svg" />
+    <Resource Include="Resources\svg\icons\icon-togglebottom2.svg" />
+    <Resource Include="Resources\svg\icons\icon-trigger.svg" />
+    <Resource Include="Resources\svg\icons\icon-unpin.svg" />
+    <Resource Include="Resources\svg\icons\icon-update.svg" />
+    <Resource Include="Resources\svg\icons\icon-verify.svg" />
+    <Resource Include="Resources\svg\icons\icon-view.svg" />
+    <Resource Include="Resources\svg\icons\icon-views1.svg" />
+    <Resource Include="Resources\svg\icons\icon-wallet.svg" />
+    <Resource Include="Resources\svg\icons\icon-wechatpay.svg" />
+    <Resource Include="Resources\svg\icons\icon-xml.svg" />
+    <Resource Include="Resources\svg\icons\icon-yingwen.svg" />
+    <Resource Include="Resources\svg\icons\icon-zhongwen.svg" />
+    <Resource Include="Resources\svg\icons\icon-zhongyingwenyingwen02-01.svg" />
+    <Resource Include="Resources\svg\icons\mssql.svg" />
+    <Resource Include="Resources\svg\icons\mysql.svg" />
+    <Resource Include="Resources\svg\icons\oracle.svg" />
+    <Resource Include="Resources\svg\icons\pgsql.svg" />
+    <Resource Include="Resources\svg\icons\redis.svg" />
+    <Resource Include="Resources\Img\bgbox.png" />
+    <Resource Include="Resources\svg\undraw\undraw_our_solution_re_8yk6.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_file_manager_re_ms29.svg" />
+    <Resource Include="Resources\Img\toolIcon\ico%402x.png" />
+    <Resource Include="Resources\svg\dameng%4064.svg" />
+    <Resource Include="Resources\Img\toolIcon\rmb%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\fanti%402x.png" />
+    <Resource Include="Resources\linux.js" />
+    <Resource Include="Resources\Img\toolIcon\linux-command%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\hex-encoding%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\unicode%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\mime-type%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\urlEncode%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\storyOfWords%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\rgbToHex%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\base64ToImg%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\barCode%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\qrCode%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\dateDiff%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\jwt%402x.png" />
+    <None Include="hha.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Content Include="hhc.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Resources\svg\tag.svg" />
+    <Resource Include="Resources\Img\toolIcon\word-count%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\text-insert%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\aes%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\md5%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\pinyin%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\base64%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\json%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\password-generator%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\randomizer%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\sql-formatter%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\timestamp-convert%402x.png" />
+    <Resource Include="Resources\Img\toolIcon\uuid%402x.png" />
+    <Resource Include="Resources\svg\logo\alipay.svg" />
+    <Resource Include="Resources\svg\database\icon_oracle_64.svg" />
+    <Resource Include="Resources\svg\ibm.svg" />
+    <Resource Include="Resources\svg\kingbase.svg" />
+    <Resource Include="Resources\svg\hangao.svg" />
+    <Resource Include="Resources\svg\dameng.svg" />
+    <Resource Include="Resources\Img\contact_weixin_card.png" />
+    <Resource Include="Resources\Img\contact_mp.png" />
+    <Resource Include="Resources\svg\undraw\undraw_collaborators_re_hont.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_conference_re_2yld.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_happy_announcement_re_tsm0.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_in_the_office_re_jtgc.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_project_team_lc5a.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_reviewed_docs_re_9lmr.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_spreadsheets_re_alt0.svg" />
+    <Resource Include="Resources\svg\undraw\undraw_work_together_re_5yhn.svg" />
+    <Resource Include="Resources\Img\donation\alipay.png" />
+    <Resource Include="Resources\Img\donation\wxpay.png" />
+    <Resource Include="Resources\Img\contact_mp_card.png" />
+    <Resource Include="Resources\Img\connect_bg.png" />
+    <Resource Include="Resources\Img\donation\caffe.png" />
+    <Content Include="Resources\Img\icon.png" />
+    <Resource Include="Resources\svg\icon_logo.svg" />
+    <Resource Include="Resources\svg\icon_money.svg" />
+    <Resource Include="Resources\svg\sqlite%4064.svg" />
+    <Resource Include="Resources\svg\TIDB%4064.svg" />
+    <Resource Include="Resources\svg\DB2%4064.svg" />
+    <Resource Include="Resources\svg\oracle%4064.svg" />
+    <Resource Include="Resources\svg\sqlserver%4064.svg" />
+    <Resource Include="Resources\svg\mysql%4064.svg" />
+    <Resource Include="Resources\svg\postgresql%4064.svg" />
+    <Resource Include="Resources\svg\doc_chm.svg" />
+    <Resource Include="Resources\svg\doc_excel.svg" />
+    <Resource Include="Resources\svg\doc_html.svg" />
+    <Resource Include="Resources\svg\doc_json.svg" />
+    <Resource Include="Resources\svg\doc_md.svg" />
+    <Resource Include="Resources\svg\doc_pdf.svg" />
+    <Resource Include="Resources\svg\doc_word.svg" />
+    <Resource Include="Resources\svg\doc_xml.svg" />
+    <Resource Include="Resources\svg\btn_add.svg" />
+    <Resource Include="Resources\svg\btn_del.svg" />
+    <Resource Include="Resources\Img\icon_docfile.png" />
+    <Resource Include="Resources\Img\icon_group.png" />
+    <Resource Include="Resources\Img\icon_connect.png" />
+    <Resource Include="Resources\Img\icon_setting.png" />
+    <Resource Include="Resources\Img\icon_import.png" />
+    <Resource Include="Resources\Img\icon\icon_weixin.png" />
+    <Resource Include="Resources\Img\icon\icon_tag.png" />
+    <Resource Include="Resources\Img\icon\icon_alipay.png" />
+    <Resource Include="Resources\Img\icon_tag.png" />
+    <Resource Include="Resources\Img\icon_gencode.png" />
+    <Resource Include="Resources\Img\icon\icon_proc.png" />
+    <Resource Include="Resources\Img\icon\icon_table.png" />
+    <Resource Include="Resources\Img\icon\icon_view.png" />
+    <Resource Include="Resources\Img\icon\icon_database.png" />
+    <Content Include="Resources\Img\Readme\About.png" />
+    <Content Include="Resources\Img\Readme\Column.png" />
+    <Content Include="Resources\Img\Readme\Connect.png" />
+    <Content Include="Resources\Img\Readme\Export.png" />
+    <Content Include="Resources\Img\Readme\Group.png" />
+    <Content Include="Resources\Img\Readme\GroupObject.png" />
+    <Content Include="Resources\Img\Readme\Import.png" />
+    <Content Include="Resources\Img\Readme\Objects.png" />
+    <Content Include="Resources\Img\Readme\Pro.png" />
+    <Content Include="Resources\Img\Readme\Setting.png" />
+    <Content Include="Resources\Img\Readme\Top.png" />
+    <Content Include="Resources\Img\Readme\View.png" />
+    <Content Include="Resources\Img\Readme\分组查询.png" />
+    <Content Include="Resources\Img\Readme\分组管理.jpg" />
+    <Content Include="Resources\Img\Readme\快捷查询.jpg" />
+    <Content Include="Resources\Img\Readme\新建连接.jpg" />
+    <Resource Include="Resources\svg\category.svg" />
+    <Resource Include="Resources\svg\proc.svg" />
+    <Resource Include="Resources\svg\view.svg" />
+    <Resource Include="Resources\svg\table.svg" />
+    <Resource Include="Resources\svg\mysql.svg" />
+    <Resource Include="Resources\svg\postgresql.svg" />
+    <Resource Include="Resources\svg\sqlserver.svg" />
+    <Resource Include="Resources\svg\forkme.svg" />
+    <Resource Include="Resources\Img\mssql_icon.png" />
+    <Resource Include="Resources\Img\mysql_icon.png" />
+    <Content Include="Resources\Img\oracle_icon.png" />
+    <Content Include="Resources\Img\oracle_icon_big.png" />
+    <Resource Include="Resources\Img\postgresql_icon.png" />
+    <Content Include="Resources\Img\postgresql_icon_big.png" />
+    <Resource Include="Resources\Img\mssql_icon_big.png" />
+    <Resource Include="Resources\Img\mysql_icon_big.png" />
+    <Resource Include="Resources\Img\mysql.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Img\sqlScript.ico" />
+    <Resource Include="Resources\Img\doc\XML.png" />
+    <Resource Include="Resources\Img\Refresh.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Img\NoData2.png" />
+    <Resource Include="Resources\Img\NoData1.png" />
+    <Resource Include="Resources\Img\NoData.png" />
+    <Resource Include="Resources\Img\bg.png" />
+    <Resource Include="Resources\Img\doc.ico" />
+    <Resource Include="Resources\Img\doc\MARKDOWN.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\Img\mssql.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\Img\doc\CHM.png" />
+    <Resource Include="Resources\Img\doc\EXCEL.png" />
+    <Resource Include="Resources\Img\doc\HTML.png" />
+    <Resource Include="Resources\Img\doc\PDF.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Img\doc\WORD.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.6.1">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.6.1 %28x86 和 x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resource.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resource.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>

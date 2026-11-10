@@ -1,0 +1,167 @@
+﻿<local:BaseUserControl
+    x:Class="SmartSQL.UserControl.UcToolMenu"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fa="http://schemas.fontawesome.io/icons/"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:local="clr-namespace:SmartSQL.UserControl"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="clr-namespace:SmartSQL.Models"
+    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
+    xmlns:uc="clr-namespace:SmartSQL.UserControl.Controls"
+    xmlns:userControl="clr-namespace:SmartSQL.UserControl"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+    <Grid>
+        <hc:ScrollViewer Margin="10,15,10,15">
+            <hc:WaterfallPanel
+                VerticalAlignment="Top"
+                hc:PanelElement.FluidMoveBehavior="{StaticResource BehaviorX200}"
+                Groups="5">
+                <uc:UcToolCard
+                    Title="SQL格式化"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/sql-formatter@2x.png"
+                    Tag="sqlformatter" />
+                <uc:UcToolCard
+                    Title="JSON格式化"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/json@2x.png"
+                    Tag="jsonformatter" />
+                <uc:UcToolCard
+                    Title="MD5文本加密"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/md5@2x.png"
+                    Tag="md5" />
+                <uc:UcToolCard
+                    Title="密码生成器"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/password-generator@2x.png"
+                    Tag="passwordGen" />
+                <uc:UcToolCard
+                    Title="UUID生成器"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/uuid@2x.png"
+                    Tag="uuidGen" />
+                <uc:UcToolCard
+                    Title="Unix时间戳转换"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/timestamp-convert@2x.png"
+                    Tag="unixConvert" />
+                <uc:UcToolCard
+                    Title="文本两端插入字符"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/text-insert@2x.png"
+                    Tag="textInsert" />
+                <uc:UcToolCard
+                    Title="Base64编码/解码"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/base64@2x.png"
+                    Tag="base64" />
+                <uc:UcToolCard
+                    Title="汉字转拼音"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/pinyin@2x.png"
+                    Tag="nPinYin" />
+                <uc:UcToolCard
+                    Title="字数统计"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/word-count@2x.png"
+                    Tag="wordCount" />
+                <uc:UcToolCard
+                    Title="JWT解码器"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/jwt@2x.png"
+                    Tag="jwt" />
+                <uc:UcToolCard
+                    Title="时间差计算"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/dateDiff@2x.png"
+                    Tag="dateDiff" />
+                <uc:UcToolCard
+                    Title="二维码生成器"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/qrCode@2x.png"
+                    Tag="qrCode" />
+                <uc:UcToolCard
+                    Title="图片转Base64"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/base64ToImg@2x.png"
+                    Tag="base64ToImg" />
+                <uc:UcToolCard
+                    Title="RGB颜色转换"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/rgbToHex@2x.png"
+                    Tag="rgbToHex" />
+                <uc:UcToolCard
+                    Title="文字物语"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/storyOfWords@2x.png"
+                    Tag="storyOfWords" />
+                <uc:UcToolCard
+                    Title="Url编码/解码"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/urlEncode@2x.png"
+                    Tag="urlEncode" />
+                <uc:UcToolCard
+                    Title="MimeType对照表"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/mime-type@2x.png"
+                    Tag="mimeType" />
+                <uc:UcToolCard
+                    Title="Unicode中文互转"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/unicode@2x.png"
+                    Tag="unicode" />
+                <uc:UcToolCard
+                    Title="Hex编码/解码"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/hex-encoding@2x.png"
+                    Tag="hexEncode" />
+                <uc:UcToolCard
+                    Title="Linux命令大全"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/linux-command@2x.png"
+                    Tag="linuxCommand" />
+                <uc:UcToolCard
+                    Title="繁简转换"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/fanti@2x.png"
+                    Tag="fanti" />
+                <uc:UcToolCard
+                    Title="人民币大写转换"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/rmb@2x.png"
+                    Tag="rmb" />
+                <uc:UcToolCard
+                    Title="Ico图标生成"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/ico@2x.png"
+                    Tag="ico" />
+                <uc:UcToolCard
+                    Title="Icon图标"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/ico@2x.png"
+                    Tag="icon" />
+                <uc:UcToolCard
+                    Title="Json转换Excel"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/jsonToExcel@2x.png"
+                    Tag="jsonToExcel" />
+                <!--<localControls:UcToolCard
+                    Title="条形码生成器"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/barCode@2x.png"
+                    IsEnabled="False"
+                    Tag="barCode" />
+                <localControls:UcToolCard
+                    Title="AES加密/解密"
+                    ClickCard="UcToolCard_ClickCard"
+                    Icon="/SmartSQL;component/Resources/Img/toolIcon/aes@2x.png"
+                    IsEnabled="False" />-->
+            </hc:WaterfallPanel>
+        </hc:ScrollViewer>
+    </Grid>
+</local:BaseUserControl>

@@ -1,0 +1,28 @@
+/packages
+*.suo
+*.user
+/.vs
+
+# ---- 上游 .NET 实现（仅作参照，不参与构建）----
+bin/
+obj/
+/legacy-dotnet/**/bin/
+/legacy-dotnet/**/obj/
+
+# ---- Rust ----
+/target/
+**/target/
+*.rs.bk
+Cargo.lock.bak
+
+# ---- 构建与导出产物 ----
+/out/
+*.xlsx
+*.xls
+!legacy-dotnet/**/*.xlsx
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
