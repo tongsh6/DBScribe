@@ -334,7 +334,16 @@ function App() {
     <div className="app">
       <header>
         <div className="brand">
-          <span className="logo">DB</span>
+          <span className="logo">
+            <svg viewBox="0 0 1024 1024" width="22" height="22" aria-hidden="true">
+              <g fill="none" stroke="#fff" strokeWidth="72" strokeLinecap="round">
+                <ellipse cx="512" cy="330" rx="226" ry="90" />
+                <path d="M286 330v352c0 49.7 101.2 90 226 90s226-40.3 226-90V330" />
+                <path d="M286 466c0 49.7 101.2 90 226 90s226-40.3 226-90" />
+                <path d="M286 602c0 49.7 101.2 90 226 90s226-40.3 226-90" />
+              </g>
+            </svg>
+          </span>
           <div>
             <h1>DBScribe</h1>
             <p>跨平台数据库结构文档工具</p>

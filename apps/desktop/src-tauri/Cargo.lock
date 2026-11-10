@@ -920,7 +920,7 @@ dependencies = [
 
 [[package]]
 name = "dbs-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -928,7 +928,7 @@ dependencies = [
 
 [[package]]
 name = "dbs-db"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "dbs-core",
@@ -939,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "dbs-desktop"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "dbs-doc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
