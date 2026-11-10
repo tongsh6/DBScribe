@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
-use dbs_db::{list_databases, load_tables, MySqlOptions};
+use dbs_db::{list_databases, load_tables, ConnectionOptions};
 use dbs_doc::{export, ExportOptions};
 use std::path::PathBuf;
 
@@ -71,18 +71,16 @@ impl ConnectionArgs {
         })
     }
 
-    fn require_mysql(&self, database: &str) -> Result<(DbType, MySqlOptions)> {
+    fn to_options(&self, database: &str) -> Result<(DbType, ConnectionOptions)> {
         let db_type = self.db_type()?;
-        if db_type != DbType::MySql {
-            anyhow::bail!("暂不支持的数据库类型：{db_type}（当前已实现 mysql）");
-        }
-        let opts = MySqlOptions {
-            host: self.host.clone(),
-            port: self.default_port(db_type),
-            user: self.user.clone(),
-            password: self.password.clone(),
-            database: database.to_string(),
-        };
+        let opts = ConnectionOptions::new(
+            db_type,
+            self.host.clone(),
+            self.default_port(db_type),
+            self.user.clone(),
+            self.password.clone(),
+            database,
+        );
         Ok((db_type, opts))
     }
 }
@@ -149,7 +147,7 @@ async fn run(cli: Cli) -> Result<()> {
 }
 
 async fn run_databases(args: DatabasesArgs) -> Result<()> {
-    let (db_type, opts) = args.conn.require_mysql("")?;
+    let (db_type, opts) = args.conn.to_options("")?;
     tracing::info!("连接 {}", opts.describe());
     let databases = list_databases(&opts).await?;
     if databases.is_empty() {
@@ -184,7 +182,7 @@ async fn run_export(args: ExportArgs) -> Result<()> {
         .clone()
         .unwrap_or_else(|| format!("{}数据库设计文档", args.database));
 
-    let (db_type, opts) = args.conn.require_mysql(&args.database)?;
+    let (db_type, opts) = args.conn.to_options(&args.database)?;
     tracing::info!("连接 {}", opts.describe());
     let tables = load_tables(&opts).await?;
     if tables.is_empty() {

@@ -5,10 +5,17 @@ use serde::{Deserialize, Serialize};
 /// 数据库连接参数（含密码，仅用于当前会话，不落盘）。
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConnectionParams {
+    /// mysql / postgres
+    #[serde(default = "default_db_type")]
+    pub db_type: String,
     pub host: String,
     pub port: u16,
     pub user: String,
     pub password: String,
+}
+
+fn default_db_type() -> String {
+    "mysql".to_string()
 }
 
 /// 表摘要（用于列表展示，不携带列定义）。
@@ -66,6 +73,9 @@ pub struct SavedConnection {
     pub id: String,
     /// 显示名称，如「本地 arcteryx_dev」
     pub name: String,
+    /// mysql / postgres
+    #[serde(default = "default_db_type")]
+    pub db_type: String,
     pub host: String,
     pub port: u16,
     pub user: String,

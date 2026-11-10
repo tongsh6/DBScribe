@@ -22,6 +22,11 @@ import type {
 } from "./types";
 import "./App.css";
 
+const DB_TYPES = [
+  { value: "mysql", label: "MySQL / MariaDB", port: 3306 },
+  { value: "postgres", label: "PostgreSQL", port: 5432 },
+];
+
 const FORMATS = [
   { value: "excel", label: "Excel (.xlsx)", ext: "xlsx" },
   { value: "markdown", label: "Markdown (.md)", ext: "md" },
@@ -44,6 +49,7 @@ function App() {
   const [rememberPassword, setRememberPassword] = useState(true);
 
   const [conn, setConn] = useState<ConnectionParams>({
+    db_type: "mysql",
     host: "127.0.0.1",
     port: 3306,
     user: "root",
@@ -146,7 +152,7 @@ function App() {
 
   const applyConnection = useCallback((c: SavedConnection) => {
     setActiveId(c.id);
-    setConn({ host: c.host, port: c.port, user: c.user, password: "" });
+    setConn({ db_type: c.db_type || "mysql", host: c.host, port: c.port, user: c.user, password: "" });
     setDatabases([]);
     setDatabase("");
     setTables([]);
@@ -241,6 +247,7 @@ function App() {
           name:
             activeConnection?.name?.trim() ||
             `${conn.user}@${conn.host}${conn.port !== 3306 ? `:${conn.port}` : ""}`,
+          db_type: conn.db_type,
           host: conn.host,
           port: conn.port,
           user: conn.user,
@@ -601,6 +608,31 @@ function App() {
                 </option>
               ))}
             </select>
+
+            <div className="field">
+              <label>数据库类型</label>
+              <select
+                value={conn.db_type}
+                onChange={(e) => {
+                  const next = DB_TYPES.find((d) => d.value === e.target.value);
+                  setConn({
+                    ...conn,
+                    db_type: e.target.value,
+                    port: next?.port ?? conn.port,
+                  });
+                  setDatabases([]);
+                  setDatabase("");
+                  setTables([]);
+                  setSelected(new Set());
+                }}
+              >
+                {DB_TYPES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="row">
               <div className="field grow">

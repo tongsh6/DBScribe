@@ -11,20 +11,26 @@ use crate::store;
 use chrono::Local;
 use tauri::Emitter;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
-use dbs_db::{MySqlOptions, list_databases, load_tables};
+use dbs_db::{ConnectionOptions, list_databases, load_tables};
 use dbs_doc::{ExportOptions, export};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
 
-fn mysql_options(conn: &ConnectionParams, database: &str) -> MySqlOptions {
-    MySqlOptions {
-        host: conn.host.clone(),
-        port: conn.port,
-        user: conn.user.clone(),
-        password: conn.password.clone(),
-        database: database.to_string(),
-    }
+/// 把界面参数转成驱动层连接参数（按所选数据库类型）
+fn to_options(conn: &ConnectionParams, database: &str) -> Result<ConnectionOptions, String> {
+    let db_type: DbType = conn
+        .db_type
+        .parse()
+        .map_err(|e: dbs_core::CoreError| e.to_string())?;
+    Ok(ConnectionOptions::new(
+        db_type,
+        conn.host.clone(),
+        conn.port,
+        conn.user.clone(),
+        conn.password.clone(),
+        database,
+    ))
 }
 
 fn to_msg(err: anyhow::Error) -> String {
@@ -34,7 +40,7 @@ fn to_msg(err: anyhow::Error) -> String {
 /// 测试连接，返回可访问的数据库数量。
 #[tauri::command]
 pub async fn test_connection(conn: ConnectionParams) -> Result<String, String> {
-    let opts = mysql_options(&conn, "");
+    let opts = to_options(&conn, "")?;
     let databases = list_databases(&opts).await.map_err(to_msg)?;
     Ok(format!("连接成功，可访问 {} 个数据库", databases.len()))
 }
@@ -42,7 +48,7 @@ pub async fn test_connection(conn: ConnectionParams) -> Result<String, String> {
 /// 列出可导出的数据库。
 #[tauri::command]
 pub async fn list_databases_cmd(conn: ConnectionParams) -> Result<Vec<String>, String> {
-    let opts = mysql_options(&conn, "");
+    let opts = to_options(&conn, "")?;
     list_databases(&opts).await.map_err(to_msg)
 }
 
@@ -52,7 +58,7 @@ pub async fn list_tables_cmd(
     conn: ConnectionParams,
     database: String,
 ) -> Result<Vec<TableSummary>, String> {
-    let opts = mysql_options(&conn, &database);
+    let opts = to_options(&conn, &database)?;
     let tables = load_tables(&opts).await.map_err(to_msg)?;
     Ok(tables
         .into_iter()
@@ -71,7 +77,7 @@ pub async fn get_table_columns_cmd(
     database: String,
     table: String,
 ) -> Result<Vec<ColumnView>, String> {
-    let opts = mysql_options(&conn, &database);
+    let opts = to_options(&conn, &database)?;
     let columns = dbs_db::load_table_columns(&opts, &table)
         .await
         .map_err(to_msg)?;
@@ -212,7 +218,7 @@ pub async fn export_document(
         }
     }
 
-    let opts = mysql_options(&conn, &params.database);
+    let opts = to_options(&conn, &params.database)?;
     let mut tables = load_tables(&opts).await.map_err(to_msg)?;
     if tables.is_empty() {
         return Err(format!("数据库 {} 中没有任何基础表", params.database));

@@ -13,11 +13,12 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 
 | 能力 | 状态 |
 | --- | --- |
-| MySQL / MariaDB 元数据读取 | ✅ 可用 |
+| MySQL / MariaDB | ✅ 可用 |
+| PostgreSQL | ✅ 可用 |
+| SQL Server / SQLite / Oracle | 🚧 规划中 |
 | Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
 | Markdown / HTML / JSON / XML 导出 | ✅ 可用 |
 | 图形界面（Tauri 桌面应用） | ✅ 可用 |
-| PostgreSQL / SQL Server / SQLite / Oracle | 🚧 规划中 |
 | CHM 导出 | 不计划（将提供 HTML 站点替代） |
 
 ## 两种使用方式
@@ -89,8 +90,8 @@ dbs export \
 
 | 参数 | 说明 |
 | --- | --- |
-| `--driver` | 数据库类型，当前支持 `mysql` |
-| `--host` / `--port` | 连接地址，端口缺省 3306 |
+| `--driver` | 数据库类型：`mysql`（默认）/ `postgres` |
+| `--host` / `--port` | 连接地址；端口缺省按类型取（mysql=3306，postgres=5432） |
 | `--user` / `--password` | 账号；密码也可用环境变量 `DBS_PASSWORD` |
 | `--database` | 要导出的库名 |
 | `--out` | 输出 `.xlsx` 路径，目录会自动创建 |
@@ -151,7 +152,7 @@ legacy-dotnet/  早期 .NET 实现归档，仅作版式参照，不参与构建
 
 围绕「把数据库文档这件事做到最好」：
 
-1. **多数据库支持**：PostgreSQL（下一个） → SQLite → SQL Server → Oracle
+1. **多数据库支持**：PostgreSQL ✅ → SQLite → SQL Server → Oracle
 2. **文档质量**：索引信息、外键关系、ER 关系图
 3. **交付体验**：文档模板、一次导出多个库
 4. **CI 集成**：文档随代码自动更新

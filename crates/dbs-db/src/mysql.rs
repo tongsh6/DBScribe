@@ -7,25 +7,7 @@ use dbs_core::{ColumnInfo, TableInfo};
 use mysql_async::prelude::*;
 use mysql_async::{OptsBuilder, Pool, Row};
 
-/// MySQL 连接参数。
-#[derive(Debug, Clone)]
-pub struct MySqlOptions {
-    pub host: String,
-    pub port: u16,
-    pub user: String,
-    pub password: String,
-    pub database: String,
-}
-
-impl MySqlOptions {
-    /// 供日志展示的脱敏连接描述（不含密码）。
-    pub fn describe(&self) -> String {
-        format!(
-            "mysql://{}@{}:{}/{}",
-            self.user, self.host, self.port, self.database
-        )
-    }
-}
+use crate::options::ConnectionOptions;
 
 const TABLE_SQL: &str = r#"
 SELECT TABLE_NAME, TABLE_COMMENT
@@ -53,7 +35,7 @@ ORDER BY SCHEMA_NAME
 "#;
 
 /// 列出可导出的数据库（排除系统库）。
-pub async fn list_databases(opts: &MySqlOptions) -> Result<Vec<String>> {
+pub async fn list_databases(opts: &ConnectionOptions) -> Result<Vec<String>> {
     let builder = OptsBuilder::default()
         .ip_or_hostname(opts.host.clone())
         .tcp_port(opts.port)
@@ -91,7 +73,7 @@ ORDER BY ORDINAL_POSITION
 
 /// 读取单张表的列信息（界面预览用，避免整库重查）。
 pub async fn load_table_columns(
-    opts: &MySqlOptions,
+    opts: &ConnectionOptions,
     table: &str,
 ) -> Result<Vec<dbs_core::ColumnInfo>> {
     let builder = OptsBuilder::default()
@@ -136,7 +118,7 @@ fn map_column(row: &Row, offset: usize) -> dbs_core::ColumnInfo {
 }
 
 /// 读取指定库的全部基础表（不含视图）及其列信息。
-pub async fn load_tables(opts: &MySqlOptions) -> Result<Vec<TableInfo>> {
+pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
     let builder = OptsBuilder::default()
         .ip_or_hostname(opts.host.clone())
         .tcp_port(opts.port)
@@ -244,19 +226,5 @@ mod tests {
         assert_eq!(extract_length("datetime"), "");
         assert_eq!(extract_length("enum('a','b')"), "'a','b'");
         assert_eq!(extract_length("bad("), "");
-    }
-
-    #[test]
-    fn describe_masks_password() {
-        let o = MySqlOptions {
-            host: "127.0.0.1".into(),
-            port: 3306,
-            user: "root".into(),
-            password: "secret".into(),
-            database: "demo".into(),
-        };
-        let d = o.describe();
-        assert!(!d.contains("secret"));
-        assert!(d.contains("mysql://root@127.0.0.1:3306/demo"));
     }
 }

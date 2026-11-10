@@ -16,12 +16,18 @@ interface Props {
 interface Draft {
   id: string;
   name: string;
+  db_type: string;
   host: string;
   port: number;
   user: string;
 }
 
-const EMPTY: Draft = { id: "", name: "", host: "127.0.0.1", port: 3306, user: "root" };
+const DB_TYPES = [
+  { value: "mysql", label: "MySQL", port: 3306 },
+  { value: "postgres", label: "PostgreSQL", port: 5432 },
+];
+
+const EMPTY: Draft = { id: "", db_type: "mysql", name: "", host: "127.0.0.1", port: 3306, user: "root" };
 
 function errText(err: unknown): string {
   if (typeof err === "string") return err;
@@ -68,6 +74,7 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
         conn: {
           id: draft.id,
           name,
+          db_type: draft.db_type,
           host: draft.host.trim(),
           port: draft.port,
           user: draft.user.trim(),
@@ -167,6 +174,26 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
                 placeholder={`${draft.user}@${draft.host}`}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               />
+            </div>
+            <div className="field">
+              <label>数据库类型</label>
+              <select
+                value={draft.db_type}
+                onChange={(e) => {
+                  const next = DB_TYPES.find((d) => d.value === e.target.value);
+                  setDraft({
+                    ...draft,
+                    db_type: e.target.value,
+                    port: next?.port ?? draft.port,
+                  });
+                }}
+              >
+                {DB_TYPES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="row">
               <div className="field grow">

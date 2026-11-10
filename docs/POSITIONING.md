@@ -54,7 +54,7 @@
 
 围绕「把数据库文档这件事做到最好」，优先级如下：
 
-1. **多数据库支持**：PostgreSQL（下一个） → SQLite → SQL Server → Oracle
+1. **多数据库支持**：PostgreSQL ✅ → SQLite → SQL Server → Oracle
    > 定位是「任意数据库」，只有一个 MySQL 撑不起这个定位
 2. **文档质量**：索引信息、外键关系、ER 关系图
    > 「文档」是核心交付物，结构越完整越有用

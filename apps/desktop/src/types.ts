@@ -1,6 +1,8 @@
 /** 前后端共享的数据结构（与 src-tauri/src/models.rs 对应）。 */
 
 export interface ConnectionParams {
+  /** mysql / postgres */
+  db_type: string;
   host: string;
   port: number;
   user: string;
@@ -11,6 +13,7 @@ export interface ConnectionParams {
 export interface SavedConnection {
   id: string;
   name: string;
+  db_type: string;
   host: string;
   port: number;
   user: string;
