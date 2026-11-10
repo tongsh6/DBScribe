@@ -13,7 +13,7 @@ use std::path::PathBuf;
     version,
     about = "DBScribe —— 跨平台数据库结构文档工具",
     long_about = "读取数据库表结构，生成结构清晰的设计文档。\n\
-                  多 Sheet 模式下会自动处理工作表名冲突（原 SmartSQL 的多 Sheet 导出失败问题已修复）。"
+                  多 Sheet 模式下会自动处理工作表命名冲突，任何表都不会丢失。"
 )]
 struct Cli {
     #[command(subcommand)]
