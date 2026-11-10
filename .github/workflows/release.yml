@@ -30,6 +30,9 @@ jobs:
             artifact: dbs-windows-x64.exe
     steps:
       - uses: actions/checkout@v4
+        with:
+          # git-cliff 需要完整提交历史来生成变更记录
+          fetch-depth: 0
 
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
@@ -52,11 +55,19 @@ jobs:
           fi
           ls -lh dist/
 
+      - name: 生成 Release Notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
       - name: 发布到 Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: dist/*
-          generate_release_notes: true
           draft: false
           prerelease: false
 

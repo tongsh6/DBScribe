@@ -1,0 +1,18 @@
+# GitHub 自动生成 Release Notes 的分类规则。
+# 注：本项目直接向 master 提交，若后续改为 PR 流程，GitHub 会按以下标签分组生成说明。
+changelog:
+  categories:
+    - title: 新功能
+      labels:
+        - feature
+        - enhancement
+    - title: 问题修复
+      labels:
+        - bug
+        - fix
+    - title: 文档
+      labels:
+        - documentation
+    - title: 其他变更
+      labels:
+        - "*"
