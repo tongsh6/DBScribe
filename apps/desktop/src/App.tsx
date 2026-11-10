@@ -4,7 +4,13 @@ import { listen } from "@tauri-apps/api/event";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ConnectionManager } from "./components/ConnectionManager";
+import { EmptyGuide } from "./components/EmptyGuide";
+import { NotificationCenter } from "./components/NotificationCenter";
+import { TableSkeleton } from "./components/TableSkeleton";
+import { ToastStack } from "./components/ToastStack";
 import { TableDetail } from "./components/TableDetail";
+import { createNotice, type Notice, type NoticeKind } from "./notifications";
+import { explainError } from "./errors";
 import type {
   AppState,
   ColumnView,
@@ -49,17 +55,20 @@ function App() {
   const [tables, setTables] = useState<TableSummary[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
+  const [debouncedFilter, setDebouncedFilter] = useState("");
   const [sortKey, setSortKey] = useState<"name" | "comment" | "columns">("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [format, setFormat] = useState("excel");
   const [sheetMode, setSheetMode] = useState("multi");
   const [title, setTitle] = useState("");
   const [outDir, setOutDir] = useState(".");
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"connect" | "load" | "export" | null>(null);
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<ExportResult | null>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [toasts, setToasts] = useState<Notice[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState(-1);
   const [prefsReady, setPrefsReady] = useState(false);
 
   // 表结构预览
@@ -75,6 +84,26 @@ function App() {
   );
   const connected = databases.length > 0;
   const searchRef = useRef<HTMLInputElement>(null);
+  const unread = useMemo(() => notices.filter((n) => !n.read).length, [notices]);
+
+  /** 推送一条通知：右下角浮出（自动消失）+ 进入通知中心 */
+  const notify = useCallback(
+    (kind: NoticeKind, title: string, detail?: string, action?: Notice["action"]) => {
+      const notice = createNotice(kind, title, detail, action);
+      setNotices((prev) => [notice, ...prev].slice(0, 50));
+      setToasts((prev) => [...prev, notice].slice(-3));
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== notice.id));
+      }, 4200);
+    },
+    [],
+  );
+
+  // 搜索防抖：避免大库每次按键都全量重排
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedFilter(filter), 150);
+    return () => clearTimeout(t);
+  }, [filter]);
 
   // 键盘快捷键：Ctrl/Cmd+F 聚焦搜索，Esc 关闭弹窗与抽屉
   useEffect(() => {
@@ -122,8 +151,6 @@ function App() {
     setDatabase("");
     setTables([]);
     setSelected(new Set());
-    setResult(null);
-    setError("");
 
     // 已保存密码的连接：自动从系统凭据管理器取回，免去重复输入
     if (c.has_password) {
@@ -153,6 +180,34 @@ function App() {
       })
       .catch(() => undefined);
   }, [refreshState, applyConnection]);
+
+  // 已保存密码时，启动后自动连接并载入第一个库（静默失败，不打扰用户）
+  const autoConnected = useRef(false);
+  useEffect(() => {
+    if (autoConnected.current || !prefsReady) return;
+    const active = connections.find((c) => c.id === activeId);
+    if (!active?.has_password || !conn.password || databases.length > 0) return;
+
+    autoConnected.current = true;
+    void (async () => {
+      try {
+        const list = await invoke<string[]>("list_databases_cmd", { conn });
+        setDatabases(list);
+        const first = list[0];
+        if (first) {
+          setDatabase(first);
+          const rows = await invoke<TableSummary[]>("list_tables_cmd", {
+            conn,
+            database: first,
+          });
+          setTables(rows);
+          setSelected(new Set(rows.map((t) => t.name)));
+        }
+      } catch {
+        /* 静默失败：用户手动点「测试连接」可看到具体原因 */
+      }
+    })();
+  }, [prefsReady, connections, activeId, conn, databases.length]);
 
   // 导出设置变化后防抖保存（下次启动直接沿用）
   useEffect(() => {
@@ -200,9 +255,7 @@ function App() {
   }, [remember, rememberPassword, activeConnection, conn, refreshState]);
 
   const testConnection = useCallback(async () => {
-    setBusy("正在连接数据库…");
-    setError("");
-    setResult(null);
+    setBusy("connect");
     try {
       const msg = await invoke<string>("test_connection", { conn });
       const list = await invoke<string[]>("list_databases_cmd", { conn });
@@ -212,30 +265,50 @@ function App() {
       alert(msg);
     } catch (e) {
       setDatabases([]);
-      setError(errText(e));
+      {
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      }
     } finally {
       setBusy(null);
     }
   }, [conn, rememberConnection]);
 
-  const loadTables = useCallback(async () => {
-    if (!database) return;
-    setBusy("正在读取表结构…");
-    setError("");
-    setResult(null);
-    try {
-      const list = await invoke<TableSummary[]>("list_tables_cmd", { conn, database });
-      setTables(list);
-      setSelected(new Set(list.map((t) => t.name)));
-      await rememberConnection();
-    } catch (e) {
+  const loadTables = useCallback(
+    async (db?: string) => {
+      const target = db ?? database;
+      if (!target) return;
+      setBusy("load");
+      try {
+        const list = await invoke<TableSummary[]>("list_tables_cmd", {
+          conn,
+          database: target,
+        });
+        setTables(list);
+        setSelected(new Set(list.map((t) => t.name)));
+        await rememberConnection();
+      } catch (e) {
+        setTables([]);
+        setSelected(new Set());
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [conn, database, rememberConnection, notify],
+  );
+
+  /** 切换数据库后自动读取表结构（省掉一次点击） */
+  const handleSelectDatabase = useCallback(
+    (db: string) => {
+      setDatabase(db);
       setTables([]);
       setSelected(new Set());
-      setError(errText(e));
-    } finally {
-      setBusy(null);
-    }
-  }, [conn, database, rememberConnection]);
+      if (db) void loadTables(db);
+    },
+    [loadTables],
+  );
 
   const openPreview = useCallback(
     async (table: TableSummary) => {
@@ -261,7 +334,7 @@ function App() {
 
   const visibleTables = useMemo(() => {
     // 搜索支持多个关键词（空格分隔），需全部命中
-    const terms = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const terms = debouncedFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let list = tables;
     if (terms.length > 0) {
       list = list.filter((t) => {
@@ -280,7 +353,33 @@ function App() {
           return a.name.localeCompare(b.name) * dir;
       }
     });
-  }, [tables, filter, sortKey, sortAsc]);
+  }, [tables, debouncedFilter, sortKey, sortAsc]);
+
+  // 键盘导航：上下键移动、空格勾选、Enter 预览（可访问性）
+  const onTableKeyDown = (e: React.KeyboardEvent) => {
+    if (visibleTables.length === 0) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveRow((prev) => {
+        const next =
+          e.key === "ArrowDown"
+            ? Math.min(prev + 1, visibleTables.length - 1)
+            : Math.max(prev - 1, 0);
+        return next;
+      });
+    } else if (e.key === " " && activeRow >= 0) {
+      e.preventDefault();
+      toggleTable(visibleTables[activeRow].name);
+    } else if (e.key === "Enter" && activeRow >= 0) {
+      e.preventDefault();
+      openPreview(visibleTables[activeRow]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeRow < 0) return;
+    document.getElementById(`tbl-row-${activeRow}`)?.scrollIntoView({ block: "nearest" });
+  }, [activeRow]);
 
   const toggleSort = (key: "name" | "comment" | "columns") => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -335,17 +434,20 @@ function App() {
       const dir = await openDialog({ directory: true, multiple: false, defaultPath: outDir });
       if (typeof dir === "string" && dir) setOutDir(dir);
     } catch (e) {
-      setError(errText(e));
+      {
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      }
     }
   }, [outDir]);
 
   const doExport = useCallback(async () => {
     if (!database) {
-      setError("请先选择数据库");
+      notify("error", "请先选择数据库", "在左侧完成连接、选择数据库并点击「读取表结构」。");
       return;
     }
     if (selectedCount === 0) {
-      setError("请至少勾选一张表");
+      notify("error", "请至少勾选一张表", "在表列表中勾选要导出的表，或用上方的「全选」。");
       return;
     }
     const fileName = `${(title || `${database}数据库设计文档`).replace(/[\\/:*?"<>|]/g, "_")}.${formatMeta.ext}`;
@@ -358,9 +460,7 @@ function App() {
     const chosen = tables.filter((t) => selected.has(t.name)).map((t) => t.name);
     const tablesParam = chosen.length === tables.length ? null : chosen;
 
-    setBusy("正在导出文档…");
-    setError("");
-    setResult(null);
+    setBusy("export");
     setExportProgress({ done: 0, total: selectedCount });
     try {
       const res = await invoke<ExportResult>("export_document", {
@@ -374,12 +474,32 @@ function App() {
           tables: tablesParam,
         },
       });
-      setResult(res);
+
+      // 导出结果走通知中心：Toast 一闪而过，详情进消息栈可追溯
+      const lines = [
+        res.out_path,
+        `表数量 ${res.table_count}` +
+          (res.sheet_count > 0 ? ` · 工作表 ${res.sheet_count}` : "") +
+          ` · 耗时 ${res.elapsed_ms} ms`,
+      ];
+      if (res.renamed.length > 0) {
+        lines.push(`\n有 ${res.renamed.length} 个工作表因名称超长/非法/重复被自动改名：`);
+        for (const r of res.renamed.slice(0, 8)) lines.push(`  ${r.original} → ${r.actual}`);
+        if (res.renamed.length > 8) lines.push(`  …其余 ${res.renamed.length - 8} 条略`);
+      }
+      notify("success", "导出成功", lines.join("\n"), {
+        label: "打开文件夹",
+        onClick: () => revealPath(res.out_path),
+      });
+
       refreshState()
         .then((s) => setHistory(s.history ?? []))
         .catch(() => undefined);
     } catch (e) {
-      setError(errText(e));
+      {
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      }
     } finally {
       setBusy(null);
       setExportProgress(null);
@@ -402,7 +522,10 @@ function App() {
     try {
       await revealItemInDir(path);
     } catch (e) {
-      setError(errText(e));
+      {
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      }
     }
   }, []);
 
@@ -411,7 +534,10 @@ function App() {
       await invoke("clear_history");
       setHistory([]);
     } catch (e) {
-      setError(errText(e));
+      {
+        const explained = explainError(e);
+        notify("error", explained.title, explained.detail);
+      }
     }
   }, []);
 
@@ -434,13 +560,22 @@ function App() {
             <p>跨平台数据库结构文档工具</p>
           </div>
         </div>
-        <div className="status">
-          <span className={`dot ${connected ? "on" : ""}`} />
-          <span className="muted">
-            {connected
-              ? `${activeConnection?.name ?? conn.user + "@" + conn.host}`
-              : "未连接"}
-          </span>
+        <div className="header-right">
+          <div className="status">
+            <span className={`dot ${connected ? "on" : ""}`} />
+            <span className="muted">
+              {connected
+                ? `${activeConnection?.name ?? conn.user + "@" + conn.host}`
+                : "未连接"}
+            </span>
+          </div>
+          <NotificationCenter
+            notices={notices}
+            unread={unread}
+            onOpen={() => setNotices((prev) => prev.map((n) => ({ ...n, read: true })))}
+            onClear={() => setNotices([])}
+            onRemove={(id) => setNotices((prev) => prev.filter((n) => n.id !== id))}
+          />
         </div>
       </header>
 
@@ -519,8 +654,20 @@ function App() {
               />
               同时记住密码（存入系统凭据管理器）
             </label>
-            <button className="primary" disabled={!!busy} onClick={testConnection}>
-              测试连接
+            <button
+              className="primary"
+              disabled={!!busy}
+              onClick={testConnection}
+              title={busy === "connect" ? "正在连接数据库…" : undefined}
+            >
+              {busy === "connect" ? (
+                <>
+                  <span className="spinner" />
+                  连接中…
+                </>
+              ) : (
+                "测试连接"
+              )}
             </button>
           </div>
 
@@ -530,7 +677,7 @@ function App() {
             </div>
             <select
               value={database}
-              onChange={(e) => setDatabase(e.target.value)}
+              onChange={(e) => handleSelectDatabase(e.target.value)}
               disabled={databases.length === 0}
             >
               {databases.length === 0 && <option value="">请先测试连接</option>}
@@ -540,34 +687,20 @@ function App() {
                 </option>
               ))}
             </select>
-            <button disabled={!database || !!busy} onClick={loadTables}>
-              读取表结构
+            <button
+              disabled={!database || !!busy}
+              onClick={() => void loadTables()}
+              title={!database ? "请先在左侧选择数据库" : undefined}
+            >
+              {busy === "load" ? (
+                <>
+                  <span className="spinner" />
+                  读取中…
+                </>
+              ) : (
+                "读取表结构"
+              )}
             </button>
-          </div>
-
-          <div className="card">
-            <div className="card-head">
-              <h2>概览</h2>
-            </div>
-            <div className="summary">
-              <div>
-                <span>已选 / 总数</span>
-                <strong>
-                  {selectedCount} / {tables.length} 张表
-                </strong>
-              </div>
-              <div>
-                <span>列总数</span>
-                <strong>{totalColumns} 列</strong>
-              </div>
-              <div>
-                <span>输出</span>
-                <strong>
-                  {formatMeta.label}
-                  {format === "excel" ? (sheetMode === "multi" ? " · 每表一页" : " · 单页") : ""}
-                </strong>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -603,72 +736,16 @@ function App() {
             </div>
           )}
 
-          {busy && (
-            <div className="toast info">
-              <div className="row">
-                <span className="spinner" />
-                <span>{busy}</span>
-                {exportProgress && (
-                  <span className="muted">
-                    {exportProgress.done} / {exportProgress.total} 张表
-                  </span>
-                )}
-              </div>
-              {exportProgress && exportProgress.total > 0 && (
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${Math.min(100, Math.round((exportProgress.done / exportProgress.total) * 100))}%`,
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          {error && <div className="toast error">{error}</div>}
-
-          {result && (
-            <div className="toast success">
-              <button className="close" title="关闭" onClick={() => setResult(null)}>
-                ×
-              </button>
-              <div className="row between">
-                <div>导出成功：{result.out_path}</div>
-                <button className="small" onClick={() => revealPath(result.out_path)}>
-                  打开所在文件夹
-                </button>
-              </div>
-              <div className="muted">
-                表数量 {result.table_count}
-                {result.sheet_count > 0 && ` · 工作表 ${result.sheet_count}`}
-                {" · "}耗时 {result.elapsed_ms} ms
-              </div>
-              {result.renamed.length > 0 && (
-                <details>
-                  <summary>
-                    有 {result.renamed.length} 个工作表因名称超长/非法/重复被自动改名
-                  </summary>
-                  <ul>
-                    {result.renamed.slice(0, 50).map((r) => (
-                      <li key={r.original}>
-                        {r.original} → {r.actual}
-                      </li>
-                    ))}
-                  </ul>
-                  {result.renamed.length > 50 && (
-                    <p className="muted">仅显示前 50 条，其余 {result.renamed.length - 50} 条略</p>
-                  )}
-                </details>
-              )}
-            </div>
-          )}
-
-          <div className="table-wrap">
-            {visibleTables.length === 0 ? (
-              <div className="empty">
-                {tables.length === 0 ? "选择数据库后点击「读取表结构」" : "没有匹配的表"}
-              </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            onKeyDown={onTableKeyDown}
+            aria-label="表列表，可用上下键移动、空格勾选、回车查看结构"
+          >
+            {busy === "load" ? (
+              <TableSkeleton />
+            ) : visibleTables.length === 0 ? (
+              <EmptyGuide connected={connected} database={database} tableCount={tables.length} />
             ) : (
               <table>
                 <thead>
@@ -695,8 +772,12 @@ function App() {
                   {visibleTables.map((t, i) => (
                     <tr
                       key={t.name}
-                      className={selected.has(t.name) ? "selected" : ""}
-                      onClick={() => toggleTable(t.name)}
+                      id={`tbl-row-${i}`}
+                      className={`${selected.has(t.name) ? "selected" : ""} ${i === activeRow ? "active" : ""}`}
+                      onClick={() => {
+                        setActiveRow(i);
+                        toggleTable(t.name);
+                      }}
                       onDoubleClick={() => openPreview(t)}
                     >
                       <td className="center">
@@ -743,28 +824,37 @@ function App() {
 
           <div className="history">
             <div className="toolbar">
-              <strong>最近导出</strong>
-              {history.length > 0 && (
+              <button
+                className="history-toggle"
+                onClick={() => setHistoryOpen((v) => !v)}
+                title={historyOpen ? "收起" : "展开最近导出"}
+              >
+                <span className="caret">{historyOpen ? "▾" : "▸"}</span>
+                最近导出
+                {history.length > 0 && <span className="muted">（{history.length}）</span>}
+              </button>
+              {historyOpen && history.length > 0 && (
                 <button className="small" onClick={clearHistory}>
                   清空
                 </button>
               )}
             </div>
-            {history.length === 0 ? (
-              <div className="muted small">还没有导出记录</div>
-            ) : (
-              <ul>
-                {history.map((h, idx) => (
-                  <li key={`${h.time}-${idx}`} onClick={() => revealPath(h.out_path)}>
-                    <span className="muted">{h.time}</span>
-                    <span className="mono">{h.database}</span>
-                    <span className="tag">{h.format}</span>
-                    <span className="muted">{h.table_count} 表</span>
-                    <span className="path">{h.out_path}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {historyOpen &&
+              (history.length === 0 ? (
+                <div className="muted small">还没有导出记录</div>
+              ) : (
+                <ul>
+                  {history.map((h, idx) => (
+                    <li key={`${h.time}-${idx}`} onClick={() => revealPath(h.out_path)}>
+                      <span className="muted">{h.time}</span>
+                      <span className="mono">{h.database}</span>
+                      <span className="tag">{h.format}</span>
+                      <span className="muted">{h.table_count} 表</span>
+                      <span className="path">{h.out_path}</span>
+                    </li>
+                  ))}
+                </ul>
+              ))}
           </div>
 
           {/* 底部固定导出栏 */}
@@ -806,9 +896,34 @@ function App() {
                 </button>
               </div>
             </div>
-            <button className="primary export-btn" disabled={!database || !!busy} onClick={doExport}>
-              导出{selectedCount > 0 ? ` ${selectedCount} 张表` : ""}
-            </button>
+            <div className="export-action">
+              <button
+                className="primary export-btn"
+                disabled={!database || !!busy}
+                onClick={doExport}
+                title={
+                  !database
+                    ? "请先读取表结构"
+                    : selectedCount === 0
+                      ? "请至少勾选一张表"
+                      : undefined
+                }
+              >
+                {busy && exportProgress
+                  ? `导出中 ${exportProgress.done}/${exportProgress.total}`
+                  : `导出${selectedCount > 0 ? ` ${selectedCount} 张表` : ""}`}
+              </button>
+              {busy && exportProgress && exportProgress.total > 0 && (
+                <div className="btn-progress">
+                  <div
+                    className="btn-progress-fill"
+                    style={{
+                      width: `${Math.min(100, Math.round((exportProgress.done / exportProgress.total) * 100))}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </main>
@@ -829,6 +944,11 @@ function App() {
         loading={previewLoading}
         error={previewError}
         onClose={() => setPreviewTable(null)}
+      />
+
+      <ToastStack
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
       />
     </div>
   );

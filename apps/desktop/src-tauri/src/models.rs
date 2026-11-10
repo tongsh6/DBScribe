@@ -112,6 +112,17 @@ pub struct HistoryEntry {
     pub elapsed_ms: u128,
 }
 
+/// 窗口尺寸与位置，用于下次启动时恢复。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WindowState {
+    pub width: f64,
+    pub height: f64,
+    pub x: f64,
+    pub y: f64,
+    #[serde(default)]
+    pub maximized: bool,
+}
+
 /// 界面偏好：记住上次使用的导出设置。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Preferences {
@@ -121,6 +132,8 @@ pub struct Preferences {
     pub sheet_mode: Option<String>,
     #[serde(default)]
     pub out_dir: Option<String>,
+    #[serde(default)]
+    pub window: Option<WindowState>,
 }
 
 /// 应用持久化状态。
