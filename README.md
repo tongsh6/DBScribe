@@ -22,6 +22,22 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 - **桌面应用**：图形界面完成「连接 → 选库 → 浏览表 → 导出」全流程，适合日常使用
 - **命令行**：可脚本化、可进 CI，适合批量与自动化
 
+## 下载安装
+
+从 [Releases](https://github.com/tongsh6/DBScribe/releases) 下载对应平台的产物，无需安装 Rust：
+
+| 平台 | 桌面应用 | 命令行 |
+| --- | --- | --- |
+| Windows (x64) | `DBScribe_x.x.x_x64-setup.exe`（或 `.msi`） | `dbs-windows-x64.exe` |
+| macOS (Apple Silicon) | `DBScribe_x.x.x_aarch64.dmg` | `dbs-macos-arm64` |
+| Linux (x64) | `.deb` / `.rpm` / `.AppImage` | `dbs-linux-x64` |
+
+命令行产物是单文件二进制，下载后直接运行即可：
+
+```bash
+chmod +x dbs-linux-x64 && ./dbs-linux-x64 --help
+```
+
 ## 快速开始
 
 ### 桌面应用
