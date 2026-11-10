@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -69,6 +69,23 @@ function App() {
     [connections, activeId],
   );
   const connected = databases.length > 0;
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // 键盘快捷键：Ctrl/Cmd+F 聚焦搜索，Esc 关闭弹窗与抽屉
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else if (e.key === "Escape") {
+        setPreviewTable(null);
+        setManagerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const refreshState = useCallback(async (): Promise<AppState> => {
     const state = await invoke<AppState>("load_app_state");
@@ -459,6 +476,31 @@ function App() {
               读取表结构
             </button>
           </div>
+
+          <div className="card">
+            <div className="card-head">
+              <h2>概览</h2>
+            </div>
+            <div className="summary">
+              <div>
+                <span>已选 / 总数</span>
+                <strong>
+                  {selectedCount} / {tables.length} 张表
+                </strong>
+              </div>
+              <div>
+                <span>列总数</span>
+                <strong>{totalColumns} 列</strong>
+              </div>
+              <div>
+                <span>输出</span>
+                <strong>
+                  {formatMeta.label}
+                  {format === "excel" ? (sheetMode === "multi" ? " · 每表一页" : " · 单页") : ""}
+                </strong>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 右栏：表列表 + 底部导出栏 */}
@@ -473,8 +515,9 @@ function App() {
               </span>
             </div>
             <input
+              ref={searchRef}
               className="search"
-              placeholder="搜索表名或注释…"
+              placeholder="搜索表名或注释… (Ctrl+F)"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               disabled={tables.length === 0}
@@ -502,6 +545,9 @@ function App() {
 
           {result && (
             <div className="toast success">
+              <button className="close" title="关闭" onClick={() => setResult(null)}>
+                ×
+              </button>
               <div className="row between">
                 <div>导出成功：{result.out_path}</div>
                 <button className="small" onClick={() => revealPath(result.out_path)}>
@@ -547,6 +593,7 @@ function App() {
                     <th>表名</th>
                     <th>注释</th>
                     <th style={{ width: 64 }}>列数</th>
+                    <th style={{ width: 56 }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -555,6 +602,7 @@ function App() {
                       key={t.name}
                       className={selected.has(t.name) ? "selected" : ""}
                       onClick={() => toggleTable(t.name)}
+                      onDoubleClick={() => openPreview(t)}
                     >
                       <td className="center">
                         <input
@@ -579,6 +627,18 @@ function App() {
                       </td>
                       <td>{t.comment}</td>
                       <td className="num">{t.column_count}</td>
+                      <td className="row-actions">
+                        <button
+                          className="ghost"
+                          title="查看表结构"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPreview(t);
+                          }}
+                        >
+                          结构
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -643,7 +703,12 @@ function App() {
               <label>导出目录</label>
               <div className="row">
                 <input value={outDir} onChange={(e) => setOutDir(e.target.value)} />
-                <button onClick={chooseDirectory}>浏览…</button>
+                <button onClick={chooseDirectory} title="选择目录">
+                  浏览…
+                </button>
+                <button onClick={() => revealPath(outDir)} title="打开目录">
+                  打开
+                </button>
               </div>
             </div>
             <button className="primary export-btn" disabled={!database || !!busy} onClick={doExport}>

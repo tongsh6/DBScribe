@@ -297,9 +297,9 @@ table {
 th,
 td {
   text-align: left;
-  padding: 7px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 th {
@@ -698,4 +698,74 @@ button.link:hover {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+/* ---- 提示条关闭按钮 ---- */
+
+.toast {
+  position: relative;
+}
+
+.toast .close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 7px;
+  cursor: pointer;
+  opacity: 0.45;
+  border-radius: 5px;
+}
+
+.toast .close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* ---- 表行内操作（悬停显示）---- */
+
+.row-actions {
+  text-align: right;
+}
+
+button.ghost {
+  opacity: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+  color: var(--primary);
+  transition: opacity 0.12s ease;
+}
+
+tr:hover button.ghost,
+button.ghost:focus-visible {
+  opacity: 1;
+}
+
+/* ---- 左栏概览 ---- */
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.summary span {
+  color: var(--muted);
+}
+
+.summary strong {
+  font-weight: 600;
+  text-align: right;
 }
