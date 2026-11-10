@@ -311,3 +311,18 @@ pub async fn export_document(
 
     Ok(result)
 }
+
+/// 达梦 ODBC 驱动状态：供界面在连接前给出安装引导。
+#[tauri::command]
+pub async fn dameng_driver_status() -> Result<serde_json::Value, String> {
+    let status = dbs_db::odbc_util::detect();
+    let available = status.is_available();
+    Ok(serde_json::json!({
+        "available": available,
+        "description": match &status {
+            dbs_db::odbc_util::DriverStatus::Available { description } => description.clone(),
+            _ => String::new(),
+        },
+        "guide": if available { String::new() } else { dbs_db::odbc_util::install_guide().to_string() },
+    }))
+}

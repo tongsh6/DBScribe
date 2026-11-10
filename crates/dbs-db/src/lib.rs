@@ -3,7 +3,9 @@
 //! 通过统一的 [`ConnectionOptions`] 调用，按 [`DbType`] 分发到具体实现。
 //! 支持 MySQL / MariaDB、PostgreSQL、SQLite、SQL Server 与 Oracle。
 
+pub mod dameng;
 pub mod mysql;
+pub mod odbc_util;
 pub mod options;
 pub mod oracle;
 pub mod oracle_client;
@@ -27,6 +29,7 @@ pub async fn list_databases(opts: &ConnectionOptions) -> Result<Vec<String>> {
         DbType::Sqlite => sqlite::list_databases(opts).await,
         DbType::SqlServer => sqlserver::list_databases(opts).await,
         DbType::Oracle => oracle::list_databases(opts).await,
+        DbType::Dameng => dameng::list_databases(opts).await,
     }
 }
 
@@ -38,6 +41,7 @@ pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
         DbType::Sqlite => sqlite::load_tables(opts).await,
         DbType::SqlServer => sqlserver::load_tables(opts).await,
         DbType::Oracle => oracle::load_tables(opts).await,
+        DbType::Dameng => dameng::load_tables(opts).await,
     }
 }
 
@@ -49,5 +53,6 @@ pub async fn load_table_columns(opts: &ConnectionOptions, table: &str) -> Result
         DbType::Sqlite => sqlite::load_table_columns(opts, table).await,
         DbType::SqlServer => sqlserver::load_table_columns(opts, table).await,
         DbType::Oracle => oracle::load_table_columns(opts, table).await,
+        DbType::Dameng => dameng::load_table_columns(opts, table).await,
     }
 }

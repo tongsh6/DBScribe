@@ -101,6 +101,7 @@ pub fn run() {
             commands::save_preferences,
             commands::clear_history,
             commands::export_document,
+            commands::dameng_driver_status,
             oracle_client::ensure_oracle_client,
             oracle_client::oracle_client_status,
         ])

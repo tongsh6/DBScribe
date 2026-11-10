@@ -27,6 +27,7 @@ const DB_TYPES = [
   { value: "postgres", label: "PostgreSQL", port: 5432 },
   { value: "sqlserver", label: "SQL Server", port: 1433 },
   { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881 },
+  { value: "dameng", label: "达梦 DM8", port: 5236 },
 ];
 
 const EMPTY: Draft = { id: "", db_type: "mysql", name: "", host: "127.0.0.1", port: 3306, user: "root" };

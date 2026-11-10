@@ -15,6 +15,8 @@ pub enum DbType {
     SqlServer,
     Sqlite,
     Oracle,
+    /// 达梦 DM8（通过 ODBC 访问）
+    Dameng,
 }
 
 impl DbType {
@@ -26,6 +28,7 @@ impl DbType {
             DbType::SqlServer => "sqlserver",
             DbType::Sqlite => "sqlite",
             DbType::Oracle => "oracle",
+            DbType::Dameng => "dameng",
         }
     }
 
@@ -62,6 +65,7 @@ impl std::str::FromStr for DbType {
             "sqlserver" | "mssql" | "sql-server" => Ok(DbType::SqlServer),
             "sqlite" | "sqlite3" => Ok(DbType::Sqlite),
             "oracle" => Ok(DbType::Oracle),
+            "dameng" | "dm" | "dm8" => Ok(DbType::Dameng),
             other => Err(CoreError::UnsupportedDbType(other.to_string())),
         }
     }

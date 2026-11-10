@@ -19,7 +19,7 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 | SQL Server | ✅ 可用 |
 | Oracle | ✅ 可用（首次连接时自动下载客户端，约 60MB） |
 | OceanBase | ✅ 可用（MySQL 兼容协议，`--driver oceanbase`） |
-| 达梦 DM8 | 🚧 暂不支持：需 ODBC 驱动与达梦客户端，破坏「下载即用」 |
+| 达梦 DM8 | ✅ 可用（Windows / Linux）：需先安装 DM ODBC 驱动，应用内会检测并给出安装指引；macOS 官方无驱动，不支持 |
 | Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
 | Markdown / HTML / JSON / XML 导出 | ✅ 可用 |
 | 图形界面（Tauri 桌面应用） | ✅ 可用 |

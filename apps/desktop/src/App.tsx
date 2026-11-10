@@ -29,6 +29,7 @@ const DB_TYPES = [
   { value: "sqlserver", label: "SQL Server", port: 1433 },
   { value: "oracle", label: "Oracle", port: 1521 },
   { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881 },
+  { value: "dameng", label: "达梦 DM8（需 ODBC 驱动）", port: 5236 },
 ];
 
 const FORMATS = [
@@ -75,6 +76,11 @@ function App() {
   const [outDir, setOutDir] = useState(".");
   const [busy, setBusy] = useState<"connect" | "load" | "export" | null>(null);
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
+  const [damengDriver, setDamengDriver] = useState<{
+    available: boolean;
+    description: string;
+    guide: string;
+  } | null>(null);
   const [oracleProgress, setOracleProgress] = useState<{
     done: number;
     total: number;
@@ -405,6 +411,17 @@ function App() {
     };
   }, []);
 
+  // 切到达梦时检测 ODBC 驱动，未安装则展示安装引导
+  useEffect(() => {
+    if (conn.db_type !== "dameng") {
+      setDamengDriver(null);
+      return;
+    }
+    invoke<{ available: boolean; description: string; guide: string }>("dameng_driver_status")
+      .then(setDamengDriver)
+      .catch(() => setDamengDriver(null));
+  }, [conn.db_type]);
+
   // 搜索支持多个关键词（空格分隔），需全部命中
     const terms = debouncedFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let list = tables;
@@ -699,6 +716,29 @@ function App() {
               </select>
             </div>
 
+            {conn.db_type === "dameng" && damengDriver && (
+              <div className={`driver-tip ${damengDriver.available ? "ok" : "warn"}`}>
+                {damengDriver.available ? (
+                  <span>ODBC 驱动已就绪：{damengDriver.description}</span>
+                ) : (
+                  <>
+                    <pre className="driver-guide">{damengDriver.guide}</pre>
+                    <button
+                      className="small"
+                      onClick={() => {
+                        invoke<{ available: boolean; description: string; guide: string }>(
+                          "dameng_driver_status",
+                        )
+                          .then(setDamengDriver)
+                          .catch(() => undefined);
+                      }}
+                    >
+                      重新检测
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {conn.db_type === "oracle" && (
               <div className="field">
                 <label>服务名（service name）</label>

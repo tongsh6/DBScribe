@@ -40,6 +40,7 @@ impl ConnectionOptions {
             DbType::PostgreSql => 5432,
             DbType::SqlServer => 1433,
             DbType::Oracle => 1521,
+            DbType::Dameng => 5236,
             DbType::Sqlite => 0,
         }
     }

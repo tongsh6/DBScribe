@@ -68,6 +68,7 @@ impl ConnectionArgs {
             DbType::SqlServer => 1433,
             DbType::Oracle => 1521,
             DbType::Sqlite => 0,
+            DbType::Dameng => 5236,
         })
     }
 
