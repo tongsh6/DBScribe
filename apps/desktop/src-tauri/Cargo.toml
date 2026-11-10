@@ -1,6 +1,6 @@
 [package]
 name = "dbs-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "DBScribe 桌面版：跨平台数据库结构文档工具"
 edition = "2021"
 license = "Apache-2.0"

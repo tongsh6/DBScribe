@@ -1,6 +1,7 @@
 name: Release
 
-# 发布：只在打 tag 或手动触发时执行三平台完整构建（日常 CI 不跑这些）
+# 发布：打 tag 时构建三平台 CLI 与桌面安装包并发布到 GitHub Release。
+# 日常 CI 不跑这里，只按需触发。
 on:
   push:
     tags: ['v*']
@@ -13,7 +14,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # CLI 单文件二进制：三平台
+  # 1) 先构建三平台 CLI 单文件二进制，并创建 Release
   cli:
     name: CLI ${{ matrix.artifact }}
     runs-on: ${{ matrix.os }}
@@ -26,7 +27,7 @@ jobs:
           - os: macos-latest
             artifact: dbs-macos-arm64
           - os: windows-latest
-            artifact: dbs-windows-x64
+            artifact: dbs-windows-x64.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -44,19 +45,25 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/release/dbs.exe dist/
+            cp target/release/dbs.exe "dist/${{ matrix.artifact }}"
           else
-            cp target/release/dbs dist/
+            cp target/release/dbs "dist/${{ matrix.artifact }}"
+            chmod +x "dist/${{ matrix.artifact }}"
           fi
+          ls -lh dist/
 
-      - uses: actions/upload-artifact@v4
+      - name: 发布到 Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
 
-  # 桌面安装包：三平台，仅在 release 时构建（耗时较长）
+  # 2) 桌面安装包：等 CLI 完成（Release 已存在）后追加资产
   desktop:
     name: Desktop ${{ matrix.os }}
+    needs: cli
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -93,7 +100,7 @@ jobs:
         working-directory: apps/desktop
         run: pnpm install --frozen-lockfile --trust-lockfile
 
-      - name: 构建并发布桌面应用
+      - name: 构建并上传桌面安装包
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,5 +108,5 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: DBScribe ${{ github.ref_name }}
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
