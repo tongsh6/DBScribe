@@ -33,7 +33,7 @@ SELECT c.table_name,
        c.data_precision,
        c.data_scale,
        c.nullable,
-       NVL(c.identity_column, 'NO'),
+       'NO' AS ident,
        c.data_default,
        NVL(cc.comments, ' '),
        CASE WHEN pk.column_name IS NULL THEN 0 ELSE 1 END
@@ -210,6 +210,7 @@ fn load_tables_blocking(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
                 length: format_length(&data_type, data_length, precision, scale),
                 data_type,
                 is_primary_key: row.get(11).map(|v| v == "1").unwrap_or(false),
+                // 达梦 all_tab_columns 没有 identity_column 字段，暂不识别自增
                 is_auto_increment: identity.eq_ignore_ascii_case("YES"),
                 nullable: row
                     .get(7)
