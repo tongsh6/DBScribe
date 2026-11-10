@@ -39,16 +39,23 @@ fn to_msg(err: anyhow::Error) -> String {
 
 /// 测试连接，返回可访问的数据库数量。
 #[tauri::command]
-pub async fn test_connection(conn: ConnectionParams) -> Result<String, String> {
-    let opts = to_options(&conn, "")?;
+pub async fn test_connection(
+    conn: ConnectionParams,
+    database: Option<String>,
+) -> Result<String, String> {
+    // Oracle 通过服务名建立连接，其余数据库此处不需要库名
+    let opts = to_options(&conn, database.as_deref().unwrap_or(""))?;
     let databases = list_databases(&opts).await.map_err(to_msg)?;
     Ok(format!("连接成功，可访问 {} 个数据库", databases.len()))
 }
 
 /// 列出可导出的数据库。
 #[tauri::command]
-pub async fn list_databases_cmd(conn: ConnectionParams) -> Result<Vec<String>, String> {
-    let opts = to_options(&conn, "")?;
+pub async fn list_databases_cmd(
+    conn: ConnectionParams,
+    database: Option<String>,
+) -> Result<Vec<String>, String> {
+    let opts = to_options(&conn, database.as_deref().unwrap_or(""))?;
     list_databases(&opts).await.map_err(to_msg)
 }
 

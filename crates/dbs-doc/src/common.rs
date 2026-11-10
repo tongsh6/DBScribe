@@ -1,7 +1,30 @@
 //! 各输出格式共用的参数与结果类型。
 
-use dbs_core::{ColumnInfo, DatabaseInfo, DbType, OutputFormat, SheetMode};
+use dbs_core::{ColumnInfo, DatabaseInfo, DbType, IndexInfo, OutputFormat, SheetMode, TableInfo};
 use std::path::PathBuf;
+
+/// **导出展示用的索引**：按「小而美」原则去掉冗余项。
+///
+/// - 主键索引不展示：列标签里已有「主键 √」，重复一遍只是噪音；
+/// - 外键支撑索引不展示：外键区块已经表达了这层关系（MySQL 等会自动建同名索引）。
+///
+/// 只保留真正额外提供信息的二级索引。
+pub fn display_indexes(table: &TableInfo) -> Vec<&IndexInfo> {
+    table
+        .indexes
+        .iter()
+        .filter(|index| {
+            if index.is_primary {
+                return false;
+            }
+            let duplicated_by_fk = table
+                .foreign_keys
+                .iter()
+                .any(|fk| fk.columns == index.columns);
+            !duplicated_by_fk
+        })
+        .collect()
+}
 
 /// 列头（Oracle 没有「自增」列，与既有版式保持一致）。
 pub fn column_headers(db_type: DbType) -> Vec<&'static str> {
@@ -45,6 +68,8 @@ pub struct ExportOptions {
     pub version: String,
     /// 输出格式。
     pub format: OutputFormat,
+    /// 是否跳过分区表（某些库的分区表有大量分区，文档里价值有限）。
+    pub skip_partitioned: bool,
 }
 
 impl ExportOptions {
@@ -60,6 +85,7 @@ impl ExportOptions {
             database,
             version: "1.0".to_string(),
             format,
+            skip_partitioned: false,
         }
     }
 }

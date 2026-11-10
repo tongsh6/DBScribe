@@ -25,6 +25,10 @@ import "./App.css";
 const DB_TYPES = [
   { value: "mysql", label: "MySQL / MariaDB", port: 3306 },
   { value: "postgres", label: "PostgreSQL", port: 5432 },
+  { value: "sqlite", label: "SQLite（本地文件）", port: 0 },
+  { value: "sqlserver", label: "SQL Server", port: 1433 },
+  { value: "oracle", label: "Oracle", port: 1521 },
+  { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881 },
 ];
 
 const FORMATS = [
@@ -33,6 +37,7 @@ const FORMATS = [
   { value: "html", label: "HTML (.html)", ext: "html" },
   { value: "json", label: "JSON (.json)", ext: "json" },
   { value: "xml", label: "XML (.xml)", ext: "xml" },
+  { value: "word", label: "Word (.docx)", ext: "docx" },
 ];
 
 function errText(err: unknown): string {
@@ -70,6 +75,11 @@ function App() {
   const [outDir, setOutDir] = useState(".");
   const [busy, setBusy] = useState<"connect" | "load" | "export" | null>(null);
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
+  const [oracleProgress, setOracleProgress] = useState<{
+    done: number;
+    total: number;
+    percent: number;
+  } | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [toasts, setToasts] = useState<Notice[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -227,7 +237,7 @@ function App() {
   }, [format, sheetMode, outDir, prefsReady]);
 
   useEffect(() => {
-    if (database) setTitle(`${database}数据库设计文档`);
+    if (database) setTitle(`${databaseDisplay}数据库设计文档`);
   }, [database]);
 
   const selectConnection = async (id: string) => {
@@ -264,22 +274,36 @@ function App() {
   const testConnection = useCallback(async () => {
     setBusy("connect");
     try {
-      const msg = await invoke<string>("test_connection", { conn });
-      const list = await invoke<string[]>("list_databases_cmd", { conn });
+      // Oracle 首次使用需要先安装客户端（懒安装：只有选 Oracle 才下载）
+      if (conn.db_type === "oracle") {
+        const installed = await invoke<boolean>("oracle_client_status");
+        if (!installed) {
+          notify(
+            "info",
+            "首次使用 Oracle 需要下载客户端",
+            "约 60MB，来自 Oracle 官方下载源；下载完成后会自动继续连接。",
+          );
+          await invoke<string>("ensure_oracle_client");
+          setOracleProgress(null);
+          notify("success", "Oracle 客户端已就绪");
+        }
+      }
+      // Oracle 通过服务名建立连接
+      const dbArg = conn.db_type === "oracle" ? database || "XE" : undefined;
+      const msg = await invoke<string>("test_connection", { conn, database: dbArg });
+      const list = await invoke<string[]>("list_databases_cmd", { conn, database: dbArg });
       setDatabases(list);
       setDatabase((prev) => (prev && list.includes(prev) ? prev : list[0] || ""));
       await rememberConnection();
-      alert(msg);
+      notify("success", msg);
     } catch (e) {
       setDatabases([]);
-      {
-        const explained = explainError(e);
-        notify("error", explained.title, explained.detail);
-      }
+      const explained = explainError(e);
+      notify("error", explained.title, explained.detail);
     } finally {
       setBusy(null);
     }
-  }, [conn, rememberConnection]);
+  }, [conn, rememberConnection, database, notify]);
 
   const loadTables = useCallback(
     async (db?: string) => {
@@ -317,6 +341,36 @@ function App() {
     [loadTables],
   );
 
+  const isSqlite = conn.db_type === "sqlite";
+
+  /** 用于标题 / 文件名的库显示名：SQLite 取文件名（去掉扩展名） */
+  const databaseDisplay = useMemo(() => {
+    if (conn.db_type === "sqlite" && database) {
+      const base = database.split(/[\\/]/).pop() ?? database;
+      return base.replace(/\.(db|sqlite|sqlite3)$/i, "");
+    }
+    return database;
+  }, [conn.db_type, database]);
+
+  /** SQLite：选中一个 .db 文件即视为连接，直接读取表结构 */
+  const chooseDatabaseFile = useCallback(async () => {
+    try {
+      const file = await openDialog({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "SQLite 数据库", extensions: ["db", "sqlite", "sqlite3"] }],
+      });
+      if (typeof file === "string" && file) {
+        setDatabase(file);
+        setDatabases([file]);
+        await loadTables(file);
+      }
+    } catch (e) {
+      const explained = explainError(e);
+      notify("error", explained.title, explained.detail);
+    }
+  }, [loadTables, notify]);
+
   const openPreview = useCallback(
     async (table: TableSummary) => {
       setPreviewTable(table);
@@ -340,7 +394,18 @@ function App() {
   );
 
   const visibleTables = useMemo(() => {
-    // 搜索支持多个关键词（空格分隔），需全部命中
+    // 监听 Oracle 客户端下载进度
+  useEffect(() => {
+    const unlisten = listen<{ done: number; total: number; percent: number }>(
+      "oracle-client-progress",
+      (e) => setOracleProgress(e.payload),
+    );
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  // 搜索支持多个关键词（空格分隔），需全部命中
     const terms = debouncedFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let list = tables;
     if (terms.length > 0) {
@@ -457,7 +522,7 @@ function App() {
       notify("error", "请至少勾选一张表", "在表列表中勾选要导出的表，或用上方的「全选」。");
       return;
     }
-    const fileName = `${(title || `${database}数据库设计文档`).replace(/[\\/:*?"<>|]/g, "_")}.${formatMeta.ext}`;
+    const fileName = `${(title || `${databaseDisplay}数据库设计文档`).replace(/[\\/:*?"<>|]/g, "_")}.${formatMeta.ext}`;
     const sep = outDir.includes("\\") ? "\\" : "/";
     const outPath =
       outDir.endsWith("/") || outDir.endsWith("\\")
@@ -634,73 +699,107 @@ function App() {
               </select>
             </div>
 
-            <div className="row">
-              <div className="field grow">
-                <label>主机</label>
+            {conn.db_type === "oracle" && (
+              <div className="field">
+                <label>服务名（service name）</label>
                 <input
-                  value={conn.host}
-                  onChange={(e) => setConn({ ...conn, host: e.target.value })}
+                  value={database}
+                  placeholder="XE"
+                  onChange={(e) => setDatabase(e.target.value)}
                 />
               </div>
-              <div className="field" style={{ width: 92 }}>
-                <label>端口</label>
-                <input
-                  type="number"
-                  value={conn.port}
-                  onChange={(e) => setConn({ ...conn, port: Number(e.target.value) || 3306 })}
-                />
+            )}
+            {isSqlite ? (
+              <div className="field">
+                <label>数据库文件</label>
+                <div className="row">
+                  <input
+                    value={database}
+                    placeholder="选择或输入 .db 文件路径"
+                    onChange={(e) => setDatabase(e.target.value)}
+                  />
+                  <button onClick={chooseDatabaseFile}>浏览…</button>
+                </div>
               </div>
-            </div>
-            <div className="row">
-              <div className="field grow">
-                <label>用户</label>
-                <input
-                  value={conn.user}
-                  onChange={(e) => setConn({ ...conn, user: e.target.value })}
-                />
-              </div>
-              <div className="field grow">
-                <label>密码</label>
-                <input
-                  type="password"
-                  value={conn.password}
-                  placeholder="不保存"
-                  onChange={(e) => setConn({ ...conn, password: e.target.value })}
-                />
-              </div>
-            </div>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              连接成功后保存该连接
-            </label>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={rememberPassword}
-                disabled={!remember}
-                onChange={(e) => setRememberPassword(e.target.checked)}
-              />
-              同时记住密码（存入系统凭据管理器）
-            </label>
-            <button
-              className="primary"
-              disabled={!!busy}
-              onClick={testConnection}
-              title={busy === "connect" ? "正在连接数据库…" : undefined}
-            >
-              {busy === "connect" ? (
-                <>
-                  <span className="spinner" />
-                  连接中…
-                </>
-              ) : (
-                "测试连接"
-              )}
-            </button>
+            ) : (
+              <>
+                <div className="row">
+                  <div className="field grow">
+                    <label>主机</label>
+                    <input
+                      value={conn.host}
+                      onChange={(e) => setConn({ ...conn, host: e.target.value })}
+                    />
+                  </div>
+                  <div className="field" style={{ width: 92 }}>
+                    <label>端口</label>
+                    <input
+                      type="number"
+                      value={conn.port}
+                      onChange={(e) =>
+                        setConn({ ...conn, port: Number(e.target.value) || conn.port })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="field grow">
+                    <label>用户</label>
+                    <input
+                      value={conn.user}
+                      onChange={(e) => setConn({ ...conn, user: e.target.value })}
+                    />
+                  </div>
+                  <div className="field grow">
+                    <label>密码</label>
+                    <input
+                      type="password"
+                      value={conn.password}
+                      placeholder="不保存"
+                      onChange={(e) => setConn({ ...conn, password: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+            {!isSqlite && (
+              <>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  连接成功后保存该连接
+                </label>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={rememberPassword}
+                    disabled={!remember}
+                    onChange={(e) => setRememberPassword(e.target.checked)}
+                  />
+                  同时记住密码（存入系统凭据管理器）
+                </label>
+                <button
+                  className="primary"
+                  disabled={!!busy}
+                  onClick={testConnection}
+                  title={busy === "connect" ? "正在连接数据库…" : undefined}
+                >
+                  {busy === "connect" ? (
+                    <>
+                      <span className="spinner" />
+                      {oracleProgress
+                        ? `下载客户端 ${oracleProgress.percent}%`
+                        : "连接中…"}
+                    </>
+                  ) : (
+                    "测试连接"
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           <div className="card">

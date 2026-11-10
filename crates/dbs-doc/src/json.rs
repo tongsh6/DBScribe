@@ -27,9 +27,34 @@ struct JsonDatabase<'a> {
 #[derive(Serialize)]
 struct JsonTable<'a> {
     order: u32,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    schema: &'a str,
     name: &'a str,
     comment: &'a str,
+    is_partitioned: bool,
     columns: Vec<JsonColumn<'a>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    indexes: Vec<JsonIndex<'a>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    foreign_keys: Vec<JsonForeignKey<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonIndex<'a> {
+    name: &'a str,
+    columns: Vec<&'a str>,
+    unique: bool,
+    primary: bool,
+}
+
+#[derive(Serialize)]
+struct JsonForeignKey<'a> {
+    name: &'a str,
+    columns: Vec<&'a str>,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    ref_schema: &'a str,
+    ref_table: &'a str,
+    ref_columns: Vec<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -64,8 +89,10 @@ pub fn export_json(
             .iter()
             .map(|t| JsonTable {
                 order: t.order,
+                schema: &t.schema,
                 name: &t.name,
                 comment: &t.comment,
+                is_partitioned: t.is_partitioned,
                 columns: t
                     .columns
                     .iter()
@@ -79,6 +106,27 @@ pub fn export_json(
                         nullable: c.nullable,
                         default_value: &c.default_value,
                         comment: &c.comment,
+                    })
+                    .collect(),
+                indexes: t
+                    .indexes
+                    .iter()
+                    .map(|i| JsonIndex {
+                        name: &i.name,
+                        columns: i.columns.iter().map(|s| s.as_str()).collect(),
+                        unique: i.is_unique,
+                        primary: i.is_primary,
+                    })
+                    .collect(),
+                foreign_keys: t
+                    .foreign_keys
+                    .iter()
+                    .map(|f| JsonForeignKey {
+                        name: &f.name,
+                        columns: f.columns.iter().map(|s| s.as_str()).collect(),
+                        ref_schema: &f.ref_schema,
+                        ref_table: &f.ref_table,
+                        ref_columns: f.ref_columns.iter().map(|s| s.as_str()).collect(),
                     })
                     .collect(),
             })
@@ -112,6 +160,7 @@ mod tests {
                 default_value: "0".into(),
                 comment: "主键".into(),
             }],
+            ..Default::default()
         }
     }
 

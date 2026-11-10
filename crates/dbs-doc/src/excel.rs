@@ -7,7 +7,9 @@
 //! [`SheetNameAllocator`] 清洗与去重，**不会因为表名超长、含非法字符、
 //! 大小写重复或撞上「目录/修订日志」而导致整个导出失败**。
 
-use crate::common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
+use crate::common::{
+    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::{DbType, SheetMode, SheetNameAllocator, TableInfo};
@@ -122,8 +124,22 @@ fn fmt_center() -> Format {
     Format::new().set_align(FormatAlign::Center)
 }
 
+/// 列说明：保留原始换行并自动换行显示。
+fn fmt_wrap() -> Format {
+    Format::new().set_text_wrap()
+}
+
 fn fmt_text() -> Format {
     Format::new().set_align(FormatAlign::Left)
+}
+
+/// 辅助信息区块标题（索引 / 外键）：灰底加粗，视觉权重低于表标题。
+fn fmt_section() -> Format {
+    Format::new()
+        .set_bold()
+        .set_align(FormatAlign::Left)
+        .set_background_color(Color::RGB(0xFAFAFA))
+        .set_border(FormatBorder::Thin)
 }
 
 // ---------------------------------------------------------------- 各工作表
@@ -234,11 +250,65 @@ fn write_tables_sheet(
             for (col, value) in column_values(column, db_type).iter().enumerate() {
                 let format = match col {
                     0 | 3 | 4 | 5 | 6 => fmt_center(),
+                    // 列说明（最后一列）保留换行
+                    _ if col + 1 == headers.len() => fmt_wrap(),
                     _ => Format::new(),
                 };
                 ws.write_string_with_format(row, col as u16, value.as_str(), &format)?;
             }
             row += 1;
+        }
+
+        // 辅助信息区块：索引（去冗余后）与外键，用留白和弱化标题与主表区分
+        let indexes = display_indexes(table);
+        if !indexes.is_empty() {
+            row += 1;
+            ws.merge_range(row, 0, row, col_count - 1, "索引", &fmt_section())?;
+            row += 1;
+            ws.write_string_with_format(row, 0, "名称", &fmt_header())?;
+            ws.write_string_with_format(row, 1, "列", &fmt_header())?;
+            ws.write_string_with_format(row, 2, "唯一", &fmt_header())?;
+            row += 1;
+            for index in indexes {
+                ws.write_string_with_format(row, 0, index.name.as_str(), &fmt_text())?;
+                ws.write_string_with_format(
+                    row,
+                    1,
+                    index.columns.join(", ").as_str(),
+                    &fmt_text(),
+                )?;
+                ws.write_string_with_format(
+                    row,
+                    2,
+                    if index.is_unique { "是" } else { "" },
+                    &fmt_center(),
+                )?;
+                row += 1;
+            }
+        }
+
+        if !table.foreign_keys.is_empty() {
+            row += 1;
+            ws.merge_range(row, 0, row, col_count - 1, "外键", &fmt_section())?;
+            row += 1;
+            ws.write_string_with_format(row, 0, "列", &fmt_header())?;
+            ws.write_string_with_format(row, 1, "引用", &fmt_header())?;
+            row += 1;
+            for fk in &table.foreign_keys {
+                let target = if fk.ref_schema.is_empty() {
+                    fk.ref_table.clone()
+                } else {
+                    format!("{}.{}", fk.ref_schema, fk.ref_table)
+                };
+                let refs: Vec<String> = fk
+                    .ref_columns
+                    .iter()
+                    .map(|column| format!("{target}.{column}"))
+                    .collect();
+                ws.write_string_with_format(row, 0, fk.columns.join(", ").as_str(), &fmt_text())?;
+                ws.write_string_with_format(row, 1, refs.join(", ").as_str(), &fmt_text())?;
+                row += 1;
+            }
         }
 
         // 表与表之间空一行（仅单 Sheet 拼接时需要）
@@ -279,6 +349,7 @@ mod tests {
             name: name.to_string(),
             comment: format!("{name} 说明"),
             columns: vec![sample_column(1, "id"), sample_column(2, "name")],
+            ..Default::default()
         }
     }
 
@@ -297,9 +368,10 @@ mod tests {
         assert_eq!(mysql.len(), 9);
         assert!(mysql.contains(&"自增"));
 
+        // Oracle 12c+ 支持 identity 列，与其他数据库一样输出「自增」
         let oracle = column_headers(DbType::Oracle);
-        assert_eq!(oracle.len(), 8);
-        assert!(!oracle.contains(&"自增"));
+        assert_eq!(oracle.len(), 9);
+        assert!(oracle.contains(&"自增"));
     }
 
     #[test]
@@ -313,7 +385,7 @@ mod tests {
         assert_eq!(v[6], ""); // 允许空
 
         let v_oracle = column_values(&c, DbType::Oracle);
-        assert_eq!(v_oracle.len(), 8);
+        assert_eq!(v_oracle.len(), 9);
     }
 
     /// 核心回归：原版会因为工作表名冲突而整个导出失败。

@@ -3,7 +3,7 @@
 //! 直接查 `information_schema`，一次拿全库表清单与列信息，避免 N+1 查询。
 
 use anyhow::{Context, Result};
-use dbs_core::{ColumnInfo, TableInfo};
+use dbs_core::{ColumnInfo, ForeignKey, IndexInfo, TableInfo};
 use mysql_async::prelude::*;
 use mysql_async::{OptsBuilder, Pool, Row};
 
@@ -40,7 +40,8 @@ pub async fn list_databases(opts: &ConnectionOptions) -> Result<Vec<String>> {
         .ip_or_hostname(opts.host.clone())
         .tcp_port(opts.port)
         .user(Some(opts.user.clone()))
-        .pass(Some(opts.password.clone()));
+        .pass(Some(opts.password.clone()))
+        .init(vec!["SET NAMES utf8mb4".to_string()]);
 
     let pool = Pool::new(builder);
     let result = list_databases_with_pool(&pool).await;
@@ -81,6 +82,7 @@ pub async fn load_table_columns(
         .tcp_port(opts.port)
         .user(Some(opts.user.clone()))
         .pass(Some(opts.password.clone()))
+        .init(vec!["SET NAMES utf8mb4".to_string()])
         .db_name(Some(opts.database.clone()));
 
     let pool = Pool::new(builder);
@@ -117,6 +119,30 @@ fn map_column(row: &Row, offset: usize) -> dbs_core::ColumnInfo {
     }
 }
 
+/// 索引信息：一个索引可能有多列，按 SEQ_IN_INDEX 排序后在 Rust 侧分组。
+const INDEX_SQL: &str = r#"
+SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, COLUMN_NAME
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = ?
+ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
+"#;
+
+/// 外键信息：组合同一个约束的多列。
+const FK_SQL: &str = r#"
+SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME,
+       REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = ? AND REFERENCED_TABLE_NAME IS NOT NULL
+ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION
+"#;
+
+/// 分区表清单。
+const PARTITION_SQL: &str = r#"
+SELECT DISTINCT TABLE_NAME
+FROM information_schema.PARTITIONS
+WHERE TABLE_SCHEMA = ? AND PARTITION_NAME IS NOT NULL
+"#;
+
 /// 读取指定库的全部基础表（不含视图）及其列信息。
 pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
     let builder = OptsBuilder::default()
@@ -124,6 +150,7 @@ pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
         .tcp_port(opts.port)
         .user(Some(opts.user.clone()))
         .pass(Some(opts.password.clone()))
+        .init(vec!["SET NAMES utf8mb4".to_string()])
         .db_name(Some(opts.database.clone()));
 
     let pool = Pool::new(builder);
@@ -158,6 +185,72 @@ async fn load_with_pool(pool: &Pool, schema: &str) -> Result<Vec<TableInfo>> {
         columns_by_table.entry(table_name).or_default().push(column);
     }
 
+    // 索引：表名 -> 索引列表（同名索引的多列合并）
+    let index_rows: Vec<Row> = conn
+        .exec(INDEX_SQL, (schema,))
+        .await
+        .context("查询索引信息失败")?;
+    let mut indexes_by_table: std::collections::HashMap<String, Vec<IndexInfo>> =
+        std::collections::HashMap::new();
+    for row in index_rows {
+        let table_name = get_string(&row, 0);
+        let index_name = get_string(&row, 1);
+        let non_unique = get_u32(&row, 2);
+        let column_name = get_string(&row, 3);
+
+        let list = indexes_by_table.entry(table_name).or_default();
+        match list.iter_mut().find(|i| i.name == index_name) {
+            Some(existing) => existing.columns.push(column_name),
+            None => list.push(IndexInfo {
+                is_primary: index_name == "PRIMARY",
+                name: index_name,
+                columns: vec![column_name],
+                is_unique: non_unique == 0,
+            }),
+        }
+    }
+
+    // 外键：表名 -> 外键列表（同一约束的多列合并）
+    let fk_rows: Vec<Row> = conn
+        .exec(FK_SQL, (schema,))
+        .await
+        .context("查询外键信息失败")?;
+    let mut fks_by_table: std::collections::HashMap<String, Vec<ForeignKey>> =
+        std::collections::HashMap::new();
+    for row in fk_rows {
+        let table_name = get_string(&row, 0);
+        let constraint = get_string(&row, 1);
+        let column_name = get_string(&row, 2);
+        let ref_schema = get_string(&row, 3);
+        let ref_table = get_string(&row, 4);
+        let ref_column = get_string(&row, 5);
+
+        let list = fks_by_table.entry(table_name).or_default();
+        match list.iter_mut().find(|f| f.name == constraint) {
+            Some(existing) => {
+                existing.columns.push(column_name);
+                existing.ref_columns.push(ref_column);
+            }
+            None => list.push(ForeignKey {
+                name: constraint,
+                columns: vec![column_name],
+                ref_schema,
+                ref_table,
+                ref_columns: vec![ref_column],
+            }),
+        }
+    }
+
+    // 分区表
+    let partition_rows: Vec<Row> = conn
+        .exec(PARTITION_SQL, (schema,))
+        .await
+        .context("查询分区信息失败")?;
+    let partitioned: std::collections::HashSet<String> = partition_rows
+        .iter()
+        .map(|row| get_string(row, 0))
+        .collect();
+
     let mut tables = Vec::with_capacity(table_rows.len());
     for (idx, row) in table_rows.into_iter().enumerate() {
         let name = get_string(&row, 0);
@@ -165,6 +258,10 @@ async fn load_with_pool(pool: &Pool, schema: &str) -> Result<Vec<TableInfo>> {
         let columns = columns_by_table.remove(&name).unwrap_or_default();
         tables.push(TableInfo {
             order: (idx + 1) as u32,
+            schema: schema.to_string(),
+            indexes: indexes_by_table.remove(&name).unwrap_or_default(),
+            foreign_keys: fks_by_table.remove(&name).unwrap_or_default(),
+            is_partitioned: partitioned.contains(&name),
             name,
             comment,
             columns,

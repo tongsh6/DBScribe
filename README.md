@@ -15,7 +15,11 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 | --- | --- |
 | MySQL / MariaDB | ✅ 可用 |
 | PostgreSQL | ✅ 可用 |
-| SQL Server / SQLite / Oracle | 🚧 规划中 |
+| SQLite | ✅ 可用 |
+| SQL Server | ✅ 可用 |
+| Oracle | ✅ 可用（首次连接时自动下载客户端，约 60MB） |
+| OceanBase | ✅ 可用（MySQL 兼容协议，`--driver oceanbase`） |
+| 达梦 DM8 | 🚧 暂不支持：需 ODBC 驱动与达梦客户端，破坏「下载即用」 |
 | Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
 | Markdown / HTML / JSON / XML 导出 | ✅ 可用 |
 | 图形界面（Tauri 桌面应用） | ✅ 可用 |
@@ -90,13 +94,14 @@ dbs export \
 
 | 参数 | 说明 |
 | --- | --- |
-| `--driver` | 数据库类型：`mysql`（默认）/ `postgres` |
-| `--host` / `--port` | 连接地址；端口缺省按类型取（mysql=3306，postgres=5432） |
+| `--driver` | 数据库类型：`mysql`（默认）/ `postgres` / `sqlite` / `sqlserver` / `oracle` |
+| `--host` / `--port` | 连接地址；端口缺省按类型取（mysql=3306，postgres=5432，sqlserver=1433，oracle=1521）；sqlite 不需要 |
 | `--user` / `--password` | 账号；密码也可用环境变量 `DBS_PASSWORD` |
 | `--database` | 要导出的库名 |
 | `--out` | 输出 `.xlsx` 路径，目录会自动创建 |
+| `--skip-partitioned` | 跳过数据库中的分区表 |
 | `--sheet-mode` | `multi`（每表一个 Sheet，默认）或 `single`（全部表放一个 Sheet），仅 Excel 生效 |
-| `--format` | 输出格式：`excel`（默认）/ `markdown` / `html` / `json` / `xml`；缺省按 `--out` 扩展名推断 |
+| `--format` | 输出格式：`excel`（默认）/ `markdown` / `html` / `json` / `xml` / `word`；缺省按 `--out` 扩展名推断 |
 | `--title` | 文档标题，缺省为「{数据库名}数据库设计文档」 |
 
 先看看有哪些库：
@@ -152,7 +157,7 @@ legacy-dotnet/  早期 .NET 实现归档，仅作版式参照，不参与构建
 
 围绕「把数据库文档这件事做到最好」：
 
-1. **多数据库支持**：PostgreSQL ✅ → SQLite → SQL Server → Oracle
+1. **多数据库支持**：MySQL ✅ → PostgreSQL ✅ → SQLite ✅ → SQL Server ✅ → Oracle ✅
 2. **文档质量**：索引信息、外键关系、ER 关系图
 3. **交付体验**：文档模板、一次导出多个库
 4. **CI 集成**：文档随代码自动更新

@@ -46,6 +46,10 @@ impl ConnectionOptions {
 
     /// 供日志展示的脱敏连接描述（不含密码）。
     pub fn describe(&self) -> String {
+        // SQLite 是文件库，没有主机/端口概念
+        if self.db_type == DbType::Sqlite {
+            return format!("sqlite://{}", self.database);
+        }
         format!(
             "{}://{}@{}:{}/{}",
             self.db_type, self.user, self.host, self.port, self.database

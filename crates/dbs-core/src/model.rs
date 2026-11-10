@@ -29,9 +29,20 @@ impl DbType {
         }
     }
 
-    /// Oracle 的列集合与原版不同（没有「自增」列），保留这个判断以对齐导出格式。
+    /// 是否在文档中输出「自增」列。
+    ///
+    /// 五种数据库都支持某种形式的自增：MySQL `AUTO_INCREMENT`、PostgreSQL
+    /// `serial`/`identity`、SQL Server `IDENTITY`、SQLite `INTEGER PRIMARY KEY`
+    /// （rowid 别名）、Oracle 12c+ `GENERATED ... AS IDENTITY`。
     pub fn has_identity_column(&self) -> bool {
-        !matches!(self, DbType::Oracle)
+        matches!(
+            self,
+            DbType::MySql
+                | DbType::PostgreSql
+                | DbType::SqlServer
+                | DbType::Sqlite
+                | DbType::Oracle
+        )
     }
 }
 
@@ -46,7 +57,7 @@ impl std::str::FromStr for DbType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
-            "mysql" => Ok(DbType::MySql),
+            "mysql" | "oceanbase" | "oceanbase-mysql" => Ok(DbType::MySql),
             "postgres" | "postgresql" | "pg" => Ok(DbType::PostgreSql),
             "sqlserver" | "mssql" | "sql-server" => Ok(DbType::SqlServer),
             "sqlite" | "sqlite3" => Ok(DbType::Sqlite),
@@ -71,6 +82,8 @@ pub enum OutputFormat {
     Json,
     /// 结构化 XML（.xml）
     Xml,
+    /// Word 文档（.docx）
+    Word,
 }
 
 impl OutputFormat {
@@ -82,6 +95,7 @@ impl OutputFormat {
             OutputFormat::Html => "html",
             OutputFormat::Json => "json",
             OutputFormat::Xml => "xml",
+            OutputFormat::Word => "docx",
         }
     }
 
@@ -92,6 +106,7 @@ impl OutputFormat {
             OutputFormat::Html => "html",
             OutputFormat::Json => "json",
             OutputFormat::Xml => "xml",
+            OutputFormat::Word => "word",
         }
     }
 
@@ -108,6 +123,7 @@ impl OutputFormat {
             "html" | "htm" => Some(OutputFormat::Html),
             "json" => Some(OutputFormat::Json),
             "xml" => Some(OutputFormat::Xml),
+            "docx" | "doc" | "word" => Some(OutputFormat::Word),
             _ => None,
         }
     }
@@ -129,6 +145,7 @@ impl std::str::FromStr for OutputFormat {
             "html" | "htm" => Ok(OutputFormat::Html),
             "json" => Ok(OutputFormat::Json),
             "xml" => Ok(OutputFormat::Xml),
+            "word" | "docx" | "doc" => Ok(OutputFormat::Word),
             other => Err(CoreError::UnsupportedFormat(other.to_string())),
         }
     }
@@ -151,14 +168,60 @@ pub struct ColumnInfo {
     pub comment: String,
 }
 
+/// 索引信息。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IndexInfo {
+    pub name: String,
+    /// 索引列（按顺序；函数索引直接存表达式文本）。
+    pub columns: Vec<String>,
+    pub is_unique: bool,
+    pub is_primary: bool,
+}
+
+/// 外键关系。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForeignKey {
+    pub name: String,
+    /// 本表列（复合外键可能多列）。
+    pub columns: Vec<String>,
+    /// 被引用表的 schema / owner。
+    pub ref_schema: String,
+    pub ref_table: String,
+    /// 被引用列，与 `columns` 一一对应。
+    pub ref_columns: Vec<String>,
+}
+
 /// 一张表的结构信息。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TableInfo {
     /// 表序号（从 1 开始）。
     pub order: u32,
+    /// 所属 schema / owner；单 schema 数据库填空字符串。
+    #[serde(default)]
+    pub schema: String,
     pub name: String,
     pub comment: String,
     pub columns: Vec<ColumnInfo>,
+    /// 索引信息（含主键索引）。
+    #[serde(default)]
+    pub indexes: Vec<IndexInfo>,
+    /// 外键关系。
+    #[serde(default)]
+    pub foreign_keys: Vec<ForeignKey>,
+    /// 是否分区表。
+    #[serde(default)]
+    pub is_partitioned: bool,
+}
+
+impl TableInfo {
+    /// 用于文档展示的完整名称（多 schema 时带上 schema 前缀）。
+    pub fn qualified_name(&self) -> String {
+        if self.schema.is_empty() {
+            self.name.clone()
+        } else {
+            format!("{}.{}", self.schema, self.name)
+        }
+    }
 }
 
 impl TableInfo {
@@ -244,7 +307,7 @@ mod tests {
 
     #[test]
     fn oracle_has_no_identity_column() {
-        assert!(!DbType::Oracle.has_identity_column());
+        assert!(DbType::Oracle.has_identity_column());
         assert!(DbType::MySql.has_identity_column());
     }
 
@@ -255,6 +318,7 @@ mod tests {
             name: "t_user".into(),
             comment: "用户表".into(),
             columns: vec![],
+            ..Default::default()
         };
         assert_eq!(t.title(), "t_user 用户表");
 

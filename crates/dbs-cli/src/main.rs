@@ -35,14 +35,14 @@ enum Command {
 /// 数据库连接参数（各子命令共用）。
 #[derive(Parser, Debug, Clone)]
 struct ConnectionArgs {
-    /// 数据库类型：mysql / postgres / sqlserver / sqlite / oracle
+    /// 数据库类型：mysql（默认）、postgres、sqlite、sqlserver、oracle
     #[arg(long, default_value = "mysql")]
     driver: String,
 
     #[arg(long, default_value = "127.0.0.1")]
     host: String,
 
-    /// 端口，缺省按数据库类型取默认值（mysql=3306）
+    /// 端口，缺省按数据库类型取默认值（mysql=3306，postgres=5432）
     #[arg(long)]
     port: Option<u16>,
 
@@ -90,7 +90,7 @@ struct ExportArgs {
     #[command(flatten)]
     conn: ConnectionArgs,
 
-    /// 要导出的数据库名
+    /// 要导出的数据库名；SQLite 时填 .db 文件路径
     #[arg(long)]
     database: String,
 
@@ -106,9 +106,13 @@ struct ExportArgs {
     #[arg(long, default_value = "multi")]
     sheet_mode: String,
 
-    /// 输出格式：excel / markdown / html / json / xml；缺省按 --out 扩展名推断
+    /// 输出格式：excel / markdown / html / json / xml / word；缺省按 --out 扩展名推断
     #[arg(long)]
     format: Option<String>,
+
+    /// 跳过数据库中的分区表
+    #[arg(long)]
+    skip_partitioned: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -177,11 +181,6 @@ async fn run_export(args: ExportArgs) -> Result<()> {
         }
     }
 
-    let title = args
-        .title
-        .clone()
-        .unwrap_or_else(|| format!("{}数据库设计文档", args.database));
-
     let (db_type, opts) = args.conn.to_options(&args.database)?;
     tracing::info!("连接 {}", opts.describe());
     let tables = load_tables(&opts).await?;
@@ -189,12 +188,27 @@ async fn run_export(args: ExportArgs) -> Result<()> {
         anyhow::bail!("数据库 {} 中没有任何基础表", args.database);
     }
 
-    let options = ExportOptions::new(
+    // SQLite 是文件库：展示名用文件名，避免把完整路径写进标题
+    let display_name = if db_type == DbType::Sqlite {
+        std::path::Path::new(&args.database)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| args.database.clone())
+    } else {
+        args.database.clone()
+    };
+    let title = args
+        .title
+        .clone()
+        .unwrap_or_else(|| format!("{display_name}数据库设计文档"));
+
+    let mut options = ExportOptions::new(
         title,
         mode,
-        DatabaseInfo::new(db_type, args.database.clone()),
+        DatabaseInfo::new(db_type, display_name),
         format,
     );
+    options.skip_partitioned = args.skip_partitioned;
     let report = export(&tables, &options, &out, &mut |_, _| {})?;
 
     println!("导出成功：{}", report.out_path.display());

@@ -37,9 +37,11 @@ pub fn export_xml(
     for table in tables {
         let _ = writeln!(
             xml,
-            "    <table order=\"{}\" name=\"{}\">",
+            "    <table order=\"{}\" name=\"{}\" schema=\"{}\" partitioned=\"{}\">",
             table.order,
-            escape(&table.name)
+            escape(&table.name),
+            escape(&table.schema),
+            table.is_partitioned
         );
         let _ = writeln!(xml, "      <comment>{}</comment>", escape(&table.comment));
         xml.push_str("      <columns>\n");
@@ -69,6 +71,48 @@ pub fn export_xml(
             xml.push_str("        </column>\n");
         }
         xml.push_str("      </columns>\n");
+
+        // 索引
+        if !table.indexes.is_empty() {
+            xml.push_str("      <indexes>\n");
+            for index in &table.indexes {
+                let _ = writeln!(
+                    xml,
+                    "        <index name=\"{}\" unique=\"{}\" primary=\"{}\">",
+                    escape(&index.name),
+                    index.is_unique,
+                    index.is_primary
+                );
+                for column in &index.columns {
+                    let _ = writeln!(xml, "          <column>{}</column>", escape(column));
+                }
+                xml.push_str("        </index>\n");
+            }
+            xml.push_str("      </indexes>\n");
+        }
+
+        // 外键
+        if !table.foreign_keys.is_empty() {
+            xml.push_str("      <foreignKeys>\n");
+            for fk in &table.foreign_keys {
+                let _ = writeln!(
+                    xml,
+                    "        <foreignKey name=\"{}\" refSchema=\"{}\" refTable=\"{}\">",
+                    escape(&fk.name),
+                    escape(&fk.ref_schema),
+                    escape(&fk.ref_table)
+                );
+                for column in &fk.columns {
+                    let _ = writeln!(xml, "          <column>{}</column>", escape(column));
+                }
+                for column in &fk.ref_columns {
+                    let _ = writeln!(xml, "          <refColumn>{}</refColumn>", escape(column));
+                }
+                xml.push_str("        </foreignKey>\n");
+            }
+            xml.push_str("      </foreignKeys>\n");
+        }
+
         xml.push_str("    </table>\n");
     }
 
@@ -117,6 +161,7 @@ mod tests {
                 default_value: String::new(),
                 comment: "主键".into(),
             }],
+            ..Default::default()
         }
     }
 

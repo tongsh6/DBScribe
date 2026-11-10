@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod oracle_client;
 mod secrets;
 mod store;
 
@@ -100,6 +101,8 @@ pub fn run() {
             commands::save_preferences,
             commands::clear_history,
             commands::export_document,
+            oracle_client::ensure_oracle_client,
+            oracle_client::oracle_client_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

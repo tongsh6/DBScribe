@@ -2,7 +2,9 @@
 //!
 //! 输出自带样式与目录，可直接双击打开或托管成静态站点。
 
-use crate::common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
+use crate::common::{
+    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::{DbType, TableInfo};
@@ -28,6 +30,10 @@ th, td { border: 1px solid #e5e7eb; padding: .38rem .6rem; text-align: left; ver
 th { background: #f3f4f6; font-weight: 600; white-space: nowrap; }
 tr:nth-child(even) td { background: #fafafa; }
 td.center { text-align: center; }
+td { white-space: pre-wrap; }
+h3 { font-size: .95rem; margin: 1.1rem 0 .35rem; color: #374151; }
+table.aux { font-size: .82rem; margin: .2rem 0 1rem; }
+table.aux th { background: #f9fafb; font-weight: 600; }
 .section { scroll-margin-top: 1rem; }
 footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: .82rem; }
 @media (prefers-color-scheme: dark) {
@@ -137,6 +143,47 @@ fn write_table(html: &mut String, table: &TableInfo, db_type: DbType) {
         html.push_str("</tr>\n");
     }
     html.push_str("</tbody>\n</table>\n");
+
+    if table.is_partitioned {
+        html.push_str("<p class=\"muted\">分区表</p>\n");
+    }
+
+    // 索引：与 Markdown 一致，去掉主键索引与外键支撑索引
+    let indexes = display_indexes(table);
+    if !indexes.is_empty() {
+        html.push_str("<h3>索引</h3>\n<table class=\"aux\">\n<thead><tr><th>名称</th><th>列</th><th>唯一</th></tr></thead>\n<tbody>\n");
+        for index in indexes {
+            html.push_str(&format!(
+                "<tr><td>{}</td><td>{}</td><td class=\"center\">{}</td></tr>\n",
+                escape(&index.name),
+                escape(&index.columns.join(", ")),
+                if index.is_unique { "是" } else { "" }
+            ));
+        }
+        html.push_str("</tbody>\n</table>\n");
+    }
+
+    if !table.foreign_keys.is_empty() {
+        html.push_str("<h3>外键</h3>\n<table class=\"aux\">\n<thead><tr><th>列</th><th>引用</th></tr></thead>\n<tbody>\n");
+        for fk in &table.foreign_keys {
+            let target = if fk.ref_schema.is_empty() {
+                fk.ref_table.clone()
+            } else {
+                format!("{}.{}", fk.ref_schema, fk.ref_table)
+            };
+            let refs: Vec<String> = fk
+                .ref_columns
+                .iter()
+                .map(|column| format!("{target}.{column}"))
+                .collect();
+            html.push_str(&format!(
+                "<tr><td>{}</td><td>{}</td></tr>\n",
+                escape(&fk.columns.join(", ")),
+                escape(&refs.join(", "))
+            ));
+        }
+        html.push_str("</tbody>\n</table>\n");
+    }
 }
 
 /// 目录锚点：使用表序号，避免表名里的特殊字符导致链接失效。
@@ -182,6 +229,7 @@ mod tests {
                 default_value: String::new(),
                 comment: "主键".into(),
             }],
+            ..Default::default()
         }
     }
 
