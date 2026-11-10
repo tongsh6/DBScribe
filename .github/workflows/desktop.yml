@@ -1,0 +1,63 @@
+name: Desktop
+
+# 桌面端：只在 apps/desktop 变更时触发；日常仅做轻量编译校验（单平台 + cargo check）
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/desktop.yml'
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 轻量校验：前端构建 + Rust cargo check（不产出安装包）
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 cargo 依赖
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: 安装 Linux 桌面依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: 安装前端依赖
+        working-directory: apps/desktop
+        # pnpm 12 的供应链策略会拒绝刚发布的依赖，--trust-lockfile 跳过校验
+        run: pnpm install --frozen-lockfile --trust-lockfile
+
+      - name: 前端类型检查与构建
+        working-directory: apps/desktop
+        run: pnpm build
+
+      - name: 后端编译检查
+        run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
