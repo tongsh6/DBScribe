@@ -43,6 +43,43 @@ WHERE TABLE_SCHEMA = ?
 ORDER BY TABLE_NAME, ORDINAL_POSITION
 "#;
 
+/// 系统库，列出可导出库时排除。
+const SYSTEM_SCHEMAS: [&str; 4] = ["information_schema", "mysql", "performance_schema", "sys"];
+
+const SCHEMA_SQL: &str = r#"
+SELECT SCHEMA_NAME
+FROM information_schema.SCHEMATA
+ORDER BY SCHEMA_NAME
+"#;
+
+/// 列出可导出的数据库（排除系统库）。
+pub async fn list_databases(opts: &MySqlOptions) -> Result<Vec<String>> {
+    let builder = OptsBuilder::default()
+        .ip_or_hostname(opts.host.clone())
+        .tcp_port(opts.port)
+        .user(Some(opts.user.clone()))
+        .pass(Some(opts.password.clone()));
+
+    let pool = Pool::new(builder);
+    let result = list_databases_with_pool(&pool).await;
+    pool.disconnect().await.ok();
+    result
+}
+
+async fn list_databases_with_pool(pool: &Pool) -> Result<Vec<String>> {
+    let mut conn = pool
+        .get_conn()
+        .await
+        .context("连接 MySQL 失败（请检查地址、端口、账号密码）")?;
+    let rows: Vec<Row> = conn.exec(SCHEMA_SQL, ()).await.context("查询库清单失败")?;
+    let names: Vec<String> = rows
+        .iter()
+        .map(|row| get_string(row, 0))
+        .filter(|name| !name.is_empty() && !SYSTEM_SCHEMAS.contains(&name.as_str()))
+        .collect();
+    Ok(names)
+}
+
 /// 读取指定库的全部基础表（不含视图）及其列信息。
 pub async fn load_tables(opts: &MySqlOptions) -> Result<Vec<TableInfo>> {
     let builder = OptsBuilder::default()

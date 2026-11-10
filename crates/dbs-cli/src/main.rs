@@ -2,9 +2,9 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use dbs_core::{DatabaseInfo, DbType, SheetMode};
-use dbs_db::{load_tables, MySqlOptions};
-use dbs_doc::{export_excel, ExcelExportOptions};
+use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
+use dbs_db::{list_databases, load_tables, MySqlOptions};
+use dbs_doc::{export, ExportOptions};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -13,9 +13,13 @@ use std::path::PathBuf;
     version,
     about = "DBScribe —— 跨平台数据库结构文档工具",
     long_about = "读取数据库表结构，生成结构清晰的设计文档。\n\
-                  多 Sheet 模式下会自动处理工作表命名冲突，任何表都不会丢失。"
+                  支持 Excel / Markdown / HTML / JSON / XML；多 Sheet 导出会自动处理工作表命名冲突，任何表都不会丢失。"
 )]
 struct Cli {
+    /// 输出详细日志
+    #[arg(long, short, global = true)]
+    verbose: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -24,10 +28,13 @@ struct Cli {
 enum Command {
     /// 导出一个数据库的结构文档
     Export(ExportArgs),
+    /// 列出连接下可导出的数据库
+    Databases(DatabasesArgs),
 }
 
-#[derive(Parser, Debug)]
-struct ExportArgs {
+/// 数据库连接参数（各子命令共用）。
+#[derive(Parser, Debug, Clone)]
+struct ConnectionArgs {
     /// 数据库类型：mysql / postgres / sqlserver / sqlite / oracle
     #[arg(long, default_value = "mysql")]
     driver: String,
@@ -45,12 +52,51 @@ struct ExportArgs {
     /// 密码。建议用环境变量 DBS_PASSWORD 传入，避免出现在命令历史里
     #[arg(long, env = "DBS_PASSWORD", default_value = "", hide_env_values = true)]
     password: String,
+}
+
+impl ConnectionArgs {
+    fn db_type(&self) -> Result<DbType> {
+        self.driver
+            .parse()
+            .with_context(|| format!("无法识别的 --driver：{}", self.driver))
+    }
+
+    fn default_port(&self, db_type: DbType) -> u16 {
+        self.port.unwrap_or(match db_type {
+            DbType::MySql => 3306,
+            DbType::PostgreSql => 5432,
+            DbType::SqlServer => 1433,
+            DbType::Oracle => 1521,
+            DbType::Sqlite => 0,
+        })
+    }
+
+    fn require_mysql(&self, database: &str) -> Result<(DbType, MySqlOptions)> {
+        let db_type = self.db_type()?;
+        if db_type != DbType::MySql {
+            anyhow::bail!("暂不支持的数据库类型：{db_type}（当前已实现 mysql）");
+        }
+        let opts = MySqlOptions {
+            host: self.host.clone(),
+            port: self.default_port(db_type),
+            user: self.user.clone(),
+            password: self.password.clone(),
+            database: database.to_string(),
+        };
+        Ok((db_type, opts))
+    }
+}
+
+#[derive(Parser, Debug)]
+struct ExportArgs {
+    #[command(flatten)]
+    conn: ConnectionArgs,
 
     /// 要导出的数据库名
     #[arg(long)]
     database: String,
 
-    /// 输出文件路径（.xlsx）
+    /// 输出文件路径；扩展名可推断格式
     #[arg(long, short)]
     out: PathBuf,
 
@@ -58,26 +104,29 @@ struct ExportArgs {
     #[arg(long)]
     title: Option<String>,
 
-    /// 工作表模式：multi=每个表一个 Sheet（默认），single=所有表放一个 Sheet
+    /// 工作表模式（仅 Excel 生效）：multi=每个表一个 Sheet（默认），single=所有表放一个 Sheet
     #[arg(long, default_value = "multi")]
     sheet_mode: String,
 
-    /// 详细日志
-    #[arg(long, short)]
-    verbose: bool,
+    /// 输出格式：excel / markdown / html / json / xml；缺省按 --out 扩展名推断
+    #[arg(long)]
+    format: Option<String>,
 }
 
-fn main() {
+#[derive(Parser, Debug)]
+struct DatabasesArgs {
+    #[command(flatten)]
+    conn: ConnectionArgs,
+}
+
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
-    if let Err(err) = run(cli) {
-        eprintln!("导出失败：{err:#}");
-        std::process::exit(1);
-    }
-}
+    init_logging(cli.verbose);
 
-fn run(cli: Cli) -> Result<()> {
-    match cli.command {
-        Command::Export(args) => run_export(args),
+    if let Err(err) = run(cli).await {
+        eprintln!("失败：{err:#}");
+        std::process::exit(1);
     }
 }
 
@@ -92,17 +141,35 @@ fn init_logging(verbose: bool) {
         .init();
 }
 
-fn run_export(args: ExportArgs) -> Result<()> {
-    init_logging(args.verbose);
+async fn run(cli: Cli) -> Result<()> {
+    match cli.command {
+        Command::Export(args) => run_export(args).await,
+        Command::Databases(args) => run_databases(args).await,
+    }
+}
 
-    let db_type: DbType = args
-        .driver
-        .parse()
-        .with_context(|| format!("无法识别的 --driver：{}", args.driver))?;
+async fn run_databases(args: DatabasesArgs) -> Result<()> {
+    let (db_type, opts) = args.conn.require_mysql("")?;
+    tracing::info!("连接 {}", opts.describe());
+    let databases = list_databases(&opts).await?;
+    if databases.is_empty() {
+        println!("没有可导出的数据库（{}）", db_type);
+        return Ok(());
+    }
+    println!("共 {} 个数据库：", databases.len());
+    for name in databases {
+        println!("  {name}");
+    }
+    Ok(())
+}
+
+async fn run_export(args: ExportArgs) -> Result<()> {
     let mode: SheetMode = args
         .sheet_mode
         .parse()
         .with_context(|| format!("无法识别的 --sheet-mode：{}", args.sheet_mode))?;
+
+    let format = resolve_format(&args)?;
 
     let out = args.out.clone();
     if let Some(parent) = out.parent() {
@@ -117,52 +184,38 @@ fn run_export(args: ExportArgs) -> Result<()> {
         .clone()
         .unwrap_or_else(|| format!("{}数据库设计文档", args.database));
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .context("初始化异步运行时失败")?;
-
-    let tables = runtime.block_on(async {
-        match db_type {
-            DbType::MySql => {
-                let opts = MySqlOptions {
-                    host: args.host.clone(),
-                    port: args.port.unwrap_or(3306),
-                    user: args.user.clone(),
-                    password: args.password.clone(),
-                    database: args.database.clone(),
-                };
-                tracing::info!("连接 {}", opts.describe());
-                load_tables(&opts).await
-            }
-            other => anyhow::bail!("暂不支持的数据库类型：{other}（当前已实现 mysql）"),
-        }
-    })?;
-
+    let (db_type, opts) = args.conn.require_mysql(&args.database)?;
+    tracing::info!("连接 {}", opts.describe());
+    let tables = load_tables(&opts).await?;
     if tables.is_empty() {
         anyhow::bail!("数据库 {} 中没有任何基础表", args.database);
     }
 
-    let opts = ExcelExportOptions::new(
+    let options = ExportOptions::new(
         title,
         mode,
         DatabaseInfo::new(db_type, args.database.clone()),
+        format,
     );
-    let report = export_excel(&tables, &opts, &out)?;
+    let report = export(&tables, &options, &out)?;
 
     println!("导出成功：{}", report.out_path.display());
-    println!(
-        "  表数量：{}    工作表：{}    模式：{}",
-        report.table_count,
-        report.sheet_count,
-        match mode {
-            SheetMode::Single => "单 Sheet",
-            SheetMode::Multi => "每表一个 Sheet",
-        }
-    );
+    if report.sheet_count > 0 {
+        println!(
+            "  表数量：{}    工作表：{}    模式：{}",
+            report.table_count,
+            report.sheet_count,
+            match mode {
+                SheetMode::Single => "单 Sheet",
+                SheetMode::Multi => "每表一个 Sheet",
+            }
+        );
+    } else {
+        println!("  表数量：{}    格式：{}", report.table_count, format);
+    }
     if !report.renamed.is_empty() {
         println!(
-            "  有 {} 个工作表因名称超长/非法/重复而被自动改名（原版会直接导出失败）：",
+            "  有 {} 个工作表因名称超长/非法/重复而被自动改名：",
             report.renamed.len()
         );
         for (original, actual) in &report.renamed {
@@ -170,4 +223,19 @@ fn run_export(args: ExportArgs) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// 解析输出格式：显式 `--format` 优先，其次按 `--out` 扩展名推断，最后兜底 Excel。
+fn resolve_format(args: &ExportArgs) -> Result<OutputFormat> {
+    if let Some(raw) = &args.format {
+        return raw
+            .parse()
+            .with_context(|| format!("无法识别的 --format：{raw}"));
+    }
+    Ok(args
+        .out
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .and_then(OutputFormat::from_extension)
+        .unwrap_or_default())
 }

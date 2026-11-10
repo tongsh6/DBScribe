@@ -7,53 +7,22 @@
 //! [`SheetNameAllocator`] 清洗与去重，**不会因为表名超长、含非法字符、
 //! 大小写重复或撞上「目录/修订日志」而导致整个导出失败**。
 
+use crate::common::{column_headers, column_values, ExportOptions, ExportReport};
 use anyhow::{Context, Result};
 use chrono::Local;
-use dbs_core::{ColumnInfo, DatabaseInfo, DbType, SheetMode, SheetNameAllocator, TableInfo};
+use dbs_core::{DbType, SheetMode, SheetNameAllocator, TableInfo};
 use rust_xlsxwriter::{Color, Format, FormatAlign, FormatBorder, Workbook, Worksheet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// 固定工作表名（业务表名撞上时会自动避让）。
 const SHEET_LOG: &str = "修订日志";
 const SHEET_OVERVIEW: &str = "目录";
 const SHEET_TABLES: &str = "表";
 
-/// 导出参数。
-#[derive(Debug, Clone)]
-pub struct ExcelExportOptions {
-    /// 文档标题，写在「目录」页首行。
-    pub title: String,
-    pub mode: SheetMode,
-    pub database: DatabaseInfo,
-    /// 修订日志里的初始版本号。
-    pub version: String,
-}
-
-impl ExcelExportOptions {
-    pub fn new(title: impl Into<String>, mode: SheetMode, database: DatabaseInfo) -> Self {
-        Self {
-            title: title.into(),
-            mode,
-            database,
-            version: "1.0".to_string(),
-        }
-    }
-}
-
-/// 导出结果摘要。
-#[derive(Debug, Clone)]
-pub struct ExportReport {
-    pub out_path: PathBuf,
-    pub table_count: usize,
-    pub sheet_count: usize,
-    /// 被改名的工作表：(原表名, 实际工作表名)
-    pub renamed: Vec<(String, String)>,
-}
-
 /// 生成 Excel 文档。
 pub fn export_excel(
     tables: &[TableInfo],
-    opts: &ExcelExportOptions,
+    opts: &ExportOptions,
     out: &Path,
 ) -> Result<ExportReport> {
     let db_type = opts.database.db_type;
@@ -156,7 +125,7 @@ fn fmt_text() -> Format {
 // ---------------------------------------------------------------- 各工作表
 
 /// 修订日志：版本号 / 修订日期 / 修订内容 / 修订人 / 审核人，预置 16 行空行。
-fn write_log_sheet(ws: &mut Worksheet, opts: &ExcelExportOptions) -> Result<()> {
+fn write_log_sheet(ws: &mut Worksheet, opts: &ExportOptions) -> Result<()> {
     const HEADERS: [&str; 5] = ["版本号", "修订日期", "修订内容", "修订人", "审核人"];
 
     ws.merge_range(0, 0, 0, 4, "修订记录", &fmt_title())?;
@@ -184,7 +153,7 @@ fn write_log_sheet(ws: &mut Worksheet, opts: &ExcelExportOptions) -> Result<()> 
 /// 目录页：标题 + 序号 / 表名 / 注释；多 Sheet 模式下表名是可点击的内部链接。
 fn write_overview_sheet(
     ws: &mut Worksheet,
-    opts: &ExcelExportOptions,
+    opts: &ExportOptions,
     tables: &[TableInfo],
     sheet_names: &[String],
 ) -> Result<()> {
@@ -219,35 +188,6 @@ fn write_overview_sheet(
         ws.set_column_width(col, width)?;
     }
     Ok(())
-}
-
-/// 列头（Oracle 没有「自增」列，与原版保持一致）。
-fn column_headers(db_type: DbType) -> Vec<&'static str> {
-    let mut headers = vec!["序号", "列名", "数据类型", "长度", "主键"];
-    if db_type.has_identity_column() {
-        headers.push("自增");
-    }
-    headers.extend(["允许空", "默认值", "列说明"]);
-    headers
-}
-
-fn column_values(column: &ColumnInfo, db_type: DbType) -> Vec<String> {
-    let mark = |b: bool| if b { "√".to_string() } else { String::new() };
-
-    let mut values = vec![
-        column.order.to_string(),
-        column.name.clone(),
-        column.data_type.clone(),
-        column.length.clone(),
-        mark(column.is_primary_key),
-    ];
-    if db_type.has_identity_column() {
-        values.push(mark(column.is_auto_increment));
-    }
-    values.push(mark(column.nullable));
-    values.push(column.default_value.clone());
-    values.push(column.comment.clone());
-    values
 }
 
 /// 写一个或多个表的结构。单 Sheet 模式会把多张表纵向拼接。
@@ -313,7 +253,7 @@ fn write_tables_sheet(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dbs_core::{ColumnInfo, TableInfo};
+    use dbs_core::{ColumnInfo, DatabaseInfo, DbType, OutputFormat, TableInfo};
 
     fn sample_column(order: u32, name: &str) -> ColumnInfo {
         ColumnInfo {
@@ -338,8 +278,13 @@ mod tests {
         }
     }
 
-    fn opts(mode: SheetMode) -> ExcelExportOptions {
-        ExcelExportOptions::new("示例文档", mode, DatabaseInfo::new(DbType::MySql, "demo"))
+    fn opts(mode: SheetMode) -> ExportOptions {
+        ExportOptions::new(
+            "示例文档",
+            mode,
+            DatabaseInfo::new(DbType::MySql, "demo"),
+            OutputFormat::Excel,
+        )
     }
 
     #[test]

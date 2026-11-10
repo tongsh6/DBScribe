@@ -56,6 +56,84 @@ impl std::str::FromStr for DbType {
     }
 }
 
+/// 输出文档格式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputFormat {
+    /// Excel 工作簿（.xlsx），支持单/多 Sheet
+    #[default]
+    Excel,
+    /// Markdown 文档（.md）
+    Markdown,
+    /// 单文件 HTML（.html），带目录与样式
+    Html,
+    /// 结构化 JSON（.json）
+    Json,
+    /// 结构化 XML（.xml）
+    Xml,
+}
+
+impl OutputFormat {
+    /// 默认文件扩展名（不含点）。
+    pub fn extension(&self) -> &'static str {
+        match self {
+            OutputFormat::Excel => "xlsx",
+            OutputFormat::Markdown => "md",
+            OutputFormat::Html => "html",
+            OutputFormat::Json => "json",
+            OutputFormat::Xml => "xml",
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OutputFormat::Excel => "excel",
+            OutputFormat::Markdown => "markdown",
+            OutputFormat::Html => "html",
+            OutputFormat::Json => "json",
+            OutputFormat::Xml => "xml",
+        }
+    }
+
+    /// 是否支持「每表一个 Sheet」这类工作表拆分。
+    pub fn supports_sheet_mode(&self) -> bool {
+        matches!(self, OutputFormat::Excel)
+    }
+
+    /// 由文件扩展名推断格式。
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        match ext.trim_start_matches('.').to_ascii_lowercase().as_str() {
+            "xlsx" => Some(OutputFormat::Excel),
+            "md" | "markdown" => Some(OutputFormat::Markdown),
+            "html" | "htm" => Some(OutputFormat::Html),
+            "json" => Some(OutputFormat::Json),
+            "xml" => Some(OutputFormat::Xml),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for OutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl std::str::FromStr for OutputFormat {
+    type Err = crate::CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "excel" | "xlsx" | "xls" => Ok(OutputFormat::Excel),
+            "md" | "markdown" => Ok(OutputFormat::Markdown),
+            "html" | "htm" => Ok(OutputFormat::Html),
+            "json" => Ok(OutputFormat::Json),
+            "xml" => Ok(OutputFormat::Xml),
+            other => Err(CoreError::UnsupportedFormat(other.to_string())),
+        }
+    }
+}
+
 /// 一列的结构信息。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnInfo {
@@ -140,6 +218,8 @@ pub enum CoreError {
     UnsupportedDbType(String),
     #[error("不支持的工作表模式：{0}（可选 single / multi）")]
     UnsupportedSheetMode(String),
+    #[error("不支持的输出格式：{0}（可选 excel / markdown / html / json / xml）")]
+    UnsupportedFormat(String),
 }
 
 #[cfg(test)]
