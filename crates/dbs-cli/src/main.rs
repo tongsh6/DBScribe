@@ -197,7 +197,7 @@ async fn run_export(args: ExportArgs) -> Result<()> {
         DatabaseInfo::new(db_type, args.database.clone()),
         format,
     );
-    let report = export(&tables, &options, &out)?;
+    let report = export(&tables, &options, &out, &mut |_, _| {})?;
 
     println!("导出成功：{}", report.out_path.display());
     if report.sheet_count > 0 {

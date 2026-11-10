@@ -114,13 +114,34 @@ fn normalize(name: &str) -> String {
 
     // Excel 不允许名称以单引号开头或结尾
     let trimmed = sanitized.trim().trim_matches('\'').trim();
-    let truncated = truncate_chars(trimmed, MAX_SHEET_NAME_LEN);
+    let truncated = truncate_smart(trimmed, MAX_SHEET_NAME_LEN);
 
     if truncated.is_empty() {
         "Sheet".to_string()
     } else {
         truncated
     }
+}
+
+/// 超长时保留头部与尾部、中间用 `…` 省略。
+///
+/// 直接硬截断会把单词切一半（`..._generation_re`），而且丢掉表名尾部的区分词
+/// （`questionnaire_answer` 只剩 `que`），导致多张同前缀的表难以分辨。
+/// 这里头部保留约 1/3、尾部保留约 2/3 —— 数据库表名通常是
+/// `t_模块_业务对象_动作` 的结构，尾部的信息量更大。
+fn truncate_smart(s: &str, max: usize) -> String {
+    let count = s.chars().count();
+    if count <= max {
+        return s.to_string();
+    }
+
+    let chars: Vec<char> = s.chars().collect();
+    let head_len = max / 3;
+    let tail_len = max - head_len - 1; // 1 个字符留给省略号
+
+    let head: String = chars[..head_len].iter().collect();
+    let tail: String = chars[count - tail_len..].iter().collect();
+    format!("{head}…{tail}")
 }
 
 /// 按 **字符数** 截断，避免把 UTF-8 多字节字符切断。
@@ -144,7 +165,8 @@ mod tests {
         let long = "this_is_a_very_long_table_name_over_31_chars_001";
         let got = a.allocate(long);
         assert_eq!(got.chars().count(), MAX_SHEET_NAME_LEN);
-        assert_eq!(got, "this_is_a_very_long_table_name_");
+        // 头部 + 省略号 + 尾部，保留结尾的区分信息
+        assert_eq!(got, "this_is_a_…me_over_31_chars_001");
     }
 
     #[test]
@@ -182,21 +204,29 @@ mod tests {
         );
     }
 
-    /// 用户真实库里的截断冲突：两张长表名前 31 字符相同。
-    ///
-    /// 注意 `t_landlord_presale_whitelist_file` 本身就有 33 个字符，
-    /// 所以第一张表在分配时也会被截断。
+    /// 用户真实库里的两张长表名之前会截断撞名，改成首尾保留后可以区分。
     #[test]
-    fn truncation_collision_gets_suffix() {
+    fn truncation_no_longer_collides_when_tails_differ() {
         let mut a = SheetNameAllocator::new();
         let first = a.allocate("t_landlord_presale_whitelist_file");
-        assert_eq!(first, "t_landlord_presale_whitelist_fi");
-        assert_eq!(first.chars().count(), MAX_SHEET_NAME_LEN);
-
         let second = a.allocate("t_landlord_presale_whitelist_file_member");
-        assert_ne!(second, first);
+
+        assert_ne!(first, second, "尾部不同就不应再撞名");
+        assert_eq!(first, "t_landlord…esale_whitelist_file");
+        assert_eq!(second, "t_landlord…hitelist_file_member");
+        for name in [&first, &second] {
+            assert_eq!(name.chars().count(), MAX_SHEET_NAME_LEN);
+        }
+    }
+
+    /// 真正同名（含大小写差异）时仍走 `_2` 后缀。
+    #[test]
+    fn identical_names_still_get_suffix() {
+        let mut a = SheetNameAllocator::new();
+        let first = a.allocate("t_very_long_table_name_that_will_be_truncated_tail");
+        let second = a.allocate("t_very_long_table_name_that_will_be_truncated_tail");
+        assert_ne!(first, second);
         assert!(second.ends_with("_2"), "实际：{second}");
-        // 加上后缀后仍不得超过 31 字符
         assert!(second.chars().count() <= MAX_SHEET_NAME_LEN);
     }
 

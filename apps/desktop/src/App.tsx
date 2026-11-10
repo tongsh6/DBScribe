@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ConnectionManager } from "./components/ConnectionManager";
@@ -48,14 +49,18 @@ function App() {
   const [tables, setTables] = useState<TableSummary[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
+  const [sortKey, setSortKey] = useState<"name" | "comment" | "columns">("name");
+  const [sortAsc, setSortAsc] = useState(true);
   const [format, setFormat] = useState("excel");
   const [sheetMode, setSheetMode] = useState("multi");
   const [title, setTitle] = useState("");
   const [outDir, setOutDir] = useState(".");
   const [busy, setBusy] = useState<string | null>(null);
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [prefsReady, setPrefsReady] = useState(false);
 
   // 表结构预览
   const [previewTable, setPreviewTable] = useState<TableSummary | null>(null);
@@ -85,6 +90,21 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // 监听后端导出进度事件
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<{ done: number; total: number }>("export-progress", (e) => {
+      setExportProgress(e.payload);
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch(() => undefined);
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
   const refreshState = useCallback(async (): Promise<AppState> => {
@@ -121,9 +141,29 @@ function App() {
         const active =
           state.connections.find((c) => c.id === state.active_connection) ?? state.connections[0];
         if (active) applyConnection(active);
+
+        // 恢复上次使用的导出设置
+        const p = state.preferences;
+        if (p) {
+          if (p.format) setFormat(p.format);
+          if (p.sheet_mode) setSheetMode(p.sheet_mode);
+          if (p.out_dir) setOutDir(p.out_dir);
+        }
+        setPrefsReady(true);
       })
       .catch(() => undefined);
   }, [refreshState, applyConnection]);
+
+  // 导出设置变化后防抖保存（下次启动直接沿用）
+  useEffect(() => {
+    if (!prefsReady) return;
+    const timer = setTimeout(() => {
+      invoke("save_preferences", {
+        preferences: { format, sheet_mode: sheetMode, out_dir: outDir },
+      }).catch(() => undefined);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [format, sheetMode, outDir, prefsReady]);
 
   useEffect(() => {
     if (database) setTitle(`${database}数据库设计文档`);
@@ -220,12 +260,38 @@ function App() {
   );
 
   const visibleTables = useMemo(() => {
-    const kw = filter.trim().toLowerCase();
-    if (!kw) return tables;
-    return tables.filter(
-      (t) => t.name.toLowerCase().includes(kw) || t.comment.toLowerCase().includes(kw),
-    );
-  }, [tables, filter]);
+    // 搜索支持多个关键词（空格分隔），需全部命中
+    const terms = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let list = tables;
+    if (terms.length > 0) {
+      list = list.filter((t) => {
+        const haystack = `${t.name}\n${t.comment}`.toLowerCase();
+        return terms.every((term) => haystack.includes(term));
+      });
+    }
+    const dir = sortAsc ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case "columns":
+          return (a.column_count - b.column_count) * dir || a.name.localeCompare(b.name);
+        case "comment":
+          return a.comment.localeCompare(b.comment, "zh") * dir || a.name.localeCompare(b.name);
+        default:
+          return a.name.localeCompare(b.name) * dir;
+      }
+    });
+  }, [tables, filter, sortKey, sortAsc]);
+
+  const toggleSort = (key: "name" | "comment" | "columns") => {
+    if (sortKey === key) setSortAsc(!sortAsc);
+    else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
+  };
+
+  const sortMark = (key: "name" | "comment" | "columns") =>
+    sortKey === key ? (sortAsc ? " ▲" : " ▼") : "";
 
   const selectedCount = useMemo(
     () => tables.reduce((n, t) => (selected.has(t.name) ? n + 1 : n), 0),
@@ -295,6 +361,7 @@ function App() {
     setBusy("正在导出文档…");
     setError("");
     setResult(null);
+    setExportProgress({ done: 0, total: selectedCount });
     try {
       const res = await invoke<ExportResult>("export_document", {
         conn,
@@ -315,6 +382,7 @@ function App() {
       setError(errText(e));
     } finally {
       setBusy(null);
+      setExportProgress(null);
     }
   }, [
     conn,
@@ -537,8 +605,25 @@ function App() {
 
           {busy && (
             <div className="toast info">
-              <span className="spinner" />
-              {busy}
+              <div className="row">
+                <span className="spinner" />
+                <span>{busy}</span>
+                {exportProgress && (
+                  <span className="muted">
+                    {exportProgress.done} / {exportProgress.total} 张表
+                  </span>
+                )}
+              </div>
+              {exportProgress && exportProgress.total > 0 && (
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${Math.min(100, Math.round((exportProgress.done / exportProgress.total) * 100))}%`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
           {error && <div className="toast error">{error}</div>}
@@ -590,9 +675,19 @@ function App() {
                   <tr>
                     <th style={{ width: 36 }} />
                     <th style={{ width: 52 }}>#</th>
-                    <th>表名</th>
-                    <th>注释</th>
-                    <th style={{ width: 64 }}>列数</th>
+                    <th className="sortable" onClick={() => toggleSort("name")}>
+                      表名{sortMark("name")}
+                    </th>
+                    <th className="sortable" onClick={() => toggleSort("comment")}>
+                      注释{sortMark("comment")}
+                    </th>
+                    <th
+                      className="sortable"
+                      style={{ width: 72 }}
+                      onClick={() => toggleSort("columns")}
+                    >
+                      列数{sortMark("columns")}
+                    </th>
                     <th style={{ width: 56 }} />
                   </tr>
                 </thead>

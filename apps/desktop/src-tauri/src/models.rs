@@ -34,6 +34,13 @@ pub struct ExportParams {
     pub tables: Option<Vec<String>>,
 }
 
+/// 导出进度事件负载。
+#[derive(Debug, Clone, Serialize)]
+pub struct ExportProgress {
+    pub done: usize,
+    pub total: usize,
+}
+
 /// 被自动改名的工作表。
 #[derive(Debug, Clone, Serialize)]
 pub struct RenamedSheet {
@@ -105,6 +112,17 @@ pub struct HistoryEntry {
     pub elapsed_ms: u128,
 }
 
+/// 界面偏好：记住上次使用的导出设置。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Preferences {
+    #[serde(default)]
+    pub format: Option<String>,
+    #[serde(default)]
+    pub sheet_mode: Option<String>,
+    #[serde(default)]
+    pub out_dir: Option<String>,
+}
+
 /// 应用持久化状态。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppState {
@@ -114,4 +132,6 @@ pub struct AppState {
     pub active_connection: Option<String>,
     #[serde(default)]
     pub history: Vec<HistoryEntry>,
+    #[serde(default)]
+    pub preferences: Preferences,
 }

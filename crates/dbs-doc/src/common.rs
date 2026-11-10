@@ -64,6 +64,9 @@ impl ExportOptions {
     }
 }
 
+/// 导出进度回调：(已完成表数, 总表数)。
+pub type ProgressFn<'a> = &'a mut dyn FnMut(usize, usize);
+
 /// 导出结果摘要。
 #[derive(Debug, Clone)]
 pub struct ExportReport {

@@ -2,7 +2,7 @@
 //!
 //! 输出便于二次处理（如导入其他系统、做 diff、喂给 AI 分析）。
 
-use crate::common::{ExportOptions, ExportReport};
+use crate::common::{ExportOptions, ExportReport, ProgressFn};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::TableInfo;
@@ -46,7 +46,12 @@ struct JsonColumn<'a> {
 }
 
 /// 生成 JSON 文档。
-pub fn export_json(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Result<ExportReport> {
+pub fn export_json(
+    tables: &[TableInfo],
+    opts: &ExportOptions,
+    out: &Path,
+    progress: ProgressFn<'_>,
+) -> Result<ExportReport> {
     let document = JsonDocument {
         title: &opts.title,
         database: JsonDatabase {
@@ -81,6 +86,7 @@ pub fn export_json(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Re
     };
 
     let json = serde_json::to_string_pretty(&document).context("序列化 JSON 失败")?;
+    progress(tables.len(), tables.len());
     std::fs::write(out, json).with_context(|| format!("写入 JSON 失败：{}", out.display()))?;
     Ok(ExportReport::simple(out.to_path_buf(), tables.len()))
 }
@@ -123,7 +129,7 @@ mod tests {
         let dir = std::env::temp_dir().join("dbs-doc-json");
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("doc.json");
-        let report = export_json(&[table()], &opts(), &out).unwrap();
+        let report = export_json(&[table()], &opts(), &out, &mut |_, _| {}).unwrap();
         assert_eq!(report.table_count, 1);
 
         let content = std::fs::read_to_string(&out).unwrap();

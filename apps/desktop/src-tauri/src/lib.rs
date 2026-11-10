@@ -18,6 +18,7 @@ pub fn run() {
             commands::delete_connection,
             commands::set_active_connection,
             commands::get_connection_password,
+            commands::save_preferences,
             commands::clear_history,
             commands::export_document,
         ])

@@ -2,7 +2,7 @@
 //!
 //! 手写序列化，避免为一次简单输出引入额外依赖；文本统一做 XML 转义。
 
-use crate::common::{ExportOptions, ExportReport};
+use crate::common::{ExportOptions, ExportReport, ProgressFn};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::TableInfo;
@@ -10,7 +10,12 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 /// 生成 XML 文档。
-pub fn export_xml(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Result<ExportReport> {
+pub fn export_xml(
+    tables: &[TableInfo],
+    opts: &ExportOptions,
+    out: &Path,
+    progress: ProgressFn<'_>,
+) -> Result<ExportReport> {
     let mut xml = String::with_capacity(64 * 1024);
 
     xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<document>\n");
@@ -69,6 +74,7 @@ pub fn export_xml(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Res
 
     xml.push_str("  </tables>\n</document>\n");
 
+    progress(tables.len(), tables.len());
     std::fs::write(out, xml).with_context(|| format!("写入 XML 失败：{}", out.display()))?;
     Ok(ExportReport::simple(out.to_path_buf(), tables.len()))
 }
@@ -133,7 +139,7 @@ mod tests {
         let dir = std::env::temp_dir().join("dbs-doc-xml");
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("doc.xml");
-        let report = export_xml(&[table()], &opts(), &out).unwrap();
+        let report = export_xml(&[table()], &opts(), &out, &mut |_, _| {}).unwrap();
         assert_eq!(report.table_count, 1);
 
         let content = std::fs::read_to_string(&out).unwrap();

@@ -59,10 +59,18 @@ export interface HistoryEntry {
   elapsed_ms: number;
 }
 
+/** 界面偏好：记住上次使用的导出设置 */
+export interface Preferences {
+  format: string | null;
+  sheet_mode: string | null;
+  out_dir: string | null;
+}
+
 export interface AppState {
   connections: SavedConnection[];
   active_connection: string | null;
   history: HistoryEntry[];
+  preferences: Preferences;
 }
 
 export interface ExportPayload {

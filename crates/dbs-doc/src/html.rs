@@ -2,7 +2,7 @@
 //!
 //! 输出自带样式与目录，可直接双击打开或托管成静态站点。
 
-use crate::common::{column_headers, column_values, ExportOptions, ExportReport};
+use crate::common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::{DbType, TableInfo};
@@ -48,7 +48,12 @@ enum CellKind {
 }
 
 /// 生成 HTML 文档。
-pub fn export_html(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Result<ExportReport> {
+pub fn export_html(
+    tables: &[TableInfo],
+    opts: &ExportOptions,
+    out: &Path,
+    progress: ProgressFn<'_>,
+) -> Result<ExportReport> {
     let db_type = opts.database.db_type;
     let mut html = String::with_capacity(64 * 1024);
 
@@ -102,6 +107,7 @@ pub fn export_html(tables: &[TableInfo], opts: &ExportOptions, out: &Path) -> Re
         Local::now().format("%Y-%m-%d %H:%M:%S")
     ));
 
+    progress(tables.len(), tables.len());
     std::fs::write(out, html).with_context(|| format!("写入 HTML 失败：{}", out.display()))?;
     Ok(ExportReport::simple(out.to_path_buf(), tables.len()))
 }
@@ -199,7 +205,7 @@ mod tests {
         let dir = std::env::temp_dir().join("dbs-doc-html");
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("doc.html");
-        let report = export_html(&[table()], &opts(), &out).unwrap();
+        let report = export_html(&[table()], &opts(), &out, &mut |_, _| {}).unwrap();
         assert_eq!(report.table_count, 1);
 
         let content = std::fs::read_to_string(&out).unwrap();

@@ -312,6 +312,15 @@ th {
   z-index: 1;
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  color: var(--primary);
+}
+
 tbody tr:hover {
   background: rgba(37, 99, 235, 0.06);
 }
@@ -715,6 +724,22 @@ button.link:hover {
   white-space: normal;
 }
 
+/* 列名/类型可点击复制 */
+.drawer-table td.copyable {
+  cursor: pointer;
+}
+
+.drawer-table td.copyable:hover {
+  color: var(--primary);
+}
+
+.copied {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #16a34a;
+  font-family: inherit;
+}
+
 /* ---- 提示条关闭按钮 ---- */
 
 .toast {
@@ -783,4 +808,27 @@ button.ghost:focus-visible {
 .summary strong {
   font-weight: 600;
   text-align: right;
+}
+
+/* ---- 导出进度条 ---- */
+
+.progress-bar {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  transition: width 0.18s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .progress-bar {
+    background: rgba(255, 255, 255, 0.12);
+  }
 }

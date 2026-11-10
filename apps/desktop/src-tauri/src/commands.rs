@@ -3,12 +3,13 @@
 //! 数据相关逻辑全部复用 `dbs-db` / `dbs-doc`，与 CLI 共享同一套核心实现。
 
 use crate::models::{
-    AppState, ColumnView, ConnectionParams, ExportParams, ExportResult, HistoryEntry,
-    RenamedSheet, SavedConnection, TableSummary,
+    AppState, ColumnView, ConnectionParams, ExportParams, ExportProgress, ExportResult,
+    HistoryEntry, Preferences, RenamedSheet, SavedConnection, TableSummary,
 };
 use crate::secrets;
 use crate::store;
 use chrono::Local;
+use tauri::Emitter;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
 use dbs_db::{MySqlOptions, list_databases, load_tables};
 use dbs_doc::{ExportOptions, export};
@@ -155,6 +156,17 @@ pub async fn delete_connection(app: tauri::AppHandle, id: String) -> Result<(), 
     store::save(&app, &state).map_err(to_msg)
 }
 
+/// 保存界面偏好（上次使用的格式 / Sheet 模式 / 导出目录）。
+#[tauri::command]
+pub async fn save_preferences(
+    app: tauri::AppHandle,
+    preferences: Preferences,
+) -> Result<(), String> {
+    let mut state = store::load(&app);
+    state.preferences = preferences;
+    store::save(&app, &state).map_err(to_msg)
+}
+
 /// 切换当前使用的连接。
 #[tauri::command]
 pub async fn set_active_connection(
@@ -227,7 +239,31 @@ pub async fn export_document(
         format,
     );
 
-    let report = export(&tables, &options, out).map_err(to_msg)?;
+    // 目标文件已存在时自动追加时间戳，避免静默覆盖上一次导出的结果
+    let target = if out.exists() {
+        let stem = out
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("document");
+        let ext = out.extension().and_then(|s| s.to_str()).unwrap_or("xlsx");
+        let stamp = Local::now().format("%Y%m%d_%H%M%S");
+        out.with_file_name(format!("{stem}_{stamp}.{ext}"))
+    } else {
+        out.to_path_buf()
+    };
+    if target != out {
+        eprintln!(
+            "[DBScribe] 目标文件已存在，改写入 {}",
+            target.display()
+        );
+    }
+
+    // 把生成进度通过事件推给前端（每完成一张表一次）
+    let app_progress = app.clone();
+    let mut on_progress = move |done: usize, total: usize| {
+        let _ = app_progress.emit("export-progress", ExportProgress { done, total });
+    };
+    let report = export(&tables, &options, &target, &mut on_progress).map_err(to_msg)?;
     let elapsed_ms = started.elapsed().as_millis();
 
     let result = ExportResult {
@@ -242,8 +278,9 @@ pub async fn export_document(
         elapsed_ms,
     };
 
-    // 记录导出历史（失败不影响导出结果）
+    // 记录导出历史（同一路径只保留最新一条，避免重复堆积）
     let mut state = store::load(&app);
+    state.history.retain(|h| h.out_path != result.out_path);
     state.history.insert(
         0,
         HistoryEntry {

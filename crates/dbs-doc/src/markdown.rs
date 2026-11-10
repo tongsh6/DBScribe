@@ -2,7 +2,7 @@
 //!
 //! 单文件输出：标题 → 元信息 → 目录（锚点跳转）→ 每张表一个小节。
 
-use crate::common::{column_headers, column_values, ExportOptions, ExportReport};
+use crate::common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::{DbType, TableInfo};
@@ -13,6 +13,7 @@ pub fn export_markdown(
     tables: &[TableInfo],
     opts: &ExportOptions,
     out: &Path,
+    progress: ProgressFn<'_>,
 ) -> Result<ExportReport> {
     let db_type = opts.database.db_type;
     let mut md = String::new();
@@ -52,6 +53,7 @@ pub fn export_markdown(
         write_table(&mut md, table, db_type);
     }
 
+    progress(tables.len(), tables.len());
     std::fs::write(out, md).with_context(|| format!("写入 Markdown 失败：{}", out.display()))?;
     Ok(ExportReport::simple(out.to_path_buf(), tables.len()))
 }
@@ -175,7 +177,7 @@ mod tests {
         let dir = std::env::temp_dir().join("dbs-doc-md");
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("doc.md");
-        let report = export_markdown(&[table()], &opts(), &out).unwrap();
+        let report = export_markdown(&[table()], &opts(), &out, &mut |_, _| {}).unwrap();
         assert_eq!(report.table_count, 1);
 
         let content = std::fs::read_to_string(&out).unwrap();

@@ -7,7 +7,7 @@
 //! [`SheetNameAllocator`] 清洗与去重，**不会因为表名超长、含非法字符、
 //! 大小写重复或撞上「目录/修订日志」而导致整个导出失败**。
 
-use crate::common::{column_headers, column_values, ExportOptions, ExportReport};
+use crate::common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
 use anyhow::{Context, Result};
 use chrono::Local;
 use dbs_core::{DbType, SheetMode, SheetNameAllocator, TableInfo};
@@ -24,6 +24,7 @@ pub fn export_excel(
     tables: &[TableInfo],
     opts: &ExportOptions,
     out: &Path,
+    progress: ProgressFn<'_>,
 ) -> Result<ExportReport> {
     let db_type = opts.database.db_type;
     let mode = opts.mode;
@@ -70,12 +71,15 @@ pub fn export_excel(
         let ws = workbook.add_worksheet();
         ws.set_name(SHEET_TABLES)?;
         write_tables_sheet(ws, tables, db_type, mode)?;
+        progress(tables.len(), tables.len());
     } else {
-        for (table, sheet_name) in tables.iter().zip(sheet_names.iter()) {
+        let total = tables.len();
+        for (idx, (table, sheet_name)) in tables.iter().zip(sheet_names.iter()).enumerate() {
             let ws = workbook.add_worksheet();
             ws.set_name(sheet_name.as_str())
                 .with_context(|| format!("创建工作表 {sheet_name} 失败"))?;
             write_tables_sheet(ws, std::slice::from_ref(table), db_type, mode)?;
+            progress(idx + 1, total);
         }
     }
 
@@ -330,7 +334,8 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("conflict.xlsx");
 
-        let report = export_excel(&tables, &opts(SheetMode::Multi), &out).expect("导出不应失败");
+        let report = export_excel(&tables, &opts(SheetMode::Multi), &out, &mut |_, _| {})
+            .expect("导出不应失败");
         assert_eq!(report.table_count, 8);
         assert_eq!(report.sheet_count, 10); // 2 固定 + 8 表
         assert!(out.exists());
@@ -352,7 +357,8 @@ mod tests {
         let dir = std::env::temp_dir().join("dbs-doc-test");
         std::fs::create_dir_all(&dir).unwrap();
         let out = dir.join("single.xlsx");
-        let report = export_excel(&tables, &opts(SheetMode::Single), &out).expect("导出失败");
+        let report = export_excel(&tables, &opts(SheetMode::Single), &out, &mut |_, _| {})
+            .expect("导出失败");
         assert_eq!(report.sheet_count, 3); // 修订日志 + 目录 + 表
         assert!(out.exists());
         assert!(report.renamed.is_empty());

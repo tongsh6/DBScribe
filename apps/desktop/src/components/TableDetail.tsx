@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ColumnView, TableSummary } from "../types";
 
 interface Props {
@@ -10,7 +11,19 @@ interface Props {
 }
 
 export function TableDetail({ open, table, columns, loading, error, onClose }: Props) {
+  const [copied, setCopied] = useState<string | null>(null);
+
   if (!open || !table) return null;
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(text);
+      setTimeout(() => setCopied(null), 1200);
+    } catch {
+      /* 剪贴板不可用时忽略 */
+    }
+  };
 
   return (
     <div className="drawer-backdrop" onClick={onClose}>
@@ -53,8 +66,22 @@ export function TableDetail({ open, table, columns, loading, error, onClose }: P
                 {columns.map((c) => (
                   <tr key={c.name}>
                     <td className="num">{c.order}</td>
-                    <td className="mono">{c.name}</td>
-                    <td className="mono">{c.data_type}</td>
+                    <td
+                      className="mono copyable"
+                      title="点击复制列名"
+                      onClick={() => copy(c.name)}
+                    >
+                      {c.name}
+                      {copied === c.name && <span className="copied">已复制</span>}
+                    </td>
+                    <td
+                      className="mono copyable"
+                      title="点击复制类型"
+                      onClick={() => copy(c.data_type)}
+                    >
+                      {c.data_type}
+                      {copied === c.data_type && <span className="copied">已复制</span>}
+                    </td>
                     <td className="num">{c.length || "-"}</td>
                     <td className="center">{c.is_primary_key ? "√" : ""}</td>
                     <td className="center">{c.is_auto_increment ? "√" : ""}</td>
