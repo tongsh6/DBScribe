@@ -1,13 +1,17 @@
-//! Tauri 命令实现：连接测试、库表浏览、文档导出。
+//! Tauri 命令实现：连接测试、库表浏览、文档导出、本地配置与历史。
 //!
-//! 全部复用 `dbs-db` / `dbs-doc`，与 CLI 共享同一套核心逻辑。
+//! 数据相关逻辑全部复用 `dbs-db` / `dbs-doc`，与 CLI 共享同一套核心实现。
 
 use crate::models::{
-    ConnectionParams, ExportParams, ExportResult, RenamedSheet, TableSummary,
+    AppState, ConnectionParams, ExportParams, ExportResult, HistoryEntry, RenamedSheet,
+    SavedConnection, TableSummary,
 };
+use crate::store;
+use chrono::Local;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
 use dbs_db::{MySqlOptions, list_databases, load_tables};
 use dbs_doc::{ExportOptions, export};
+use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
 
@@ -58,9 +62,69 @@ pub async fn list_tables_cmd(
         .collect())
 }
 
-/// 导出文档。
+/// 读取本地保存的连接配置与导出历史。
+#[tauri::command]
+pub async fn load_app_state(app: tauri::AppHandle) -> Result<AppState, String> {
+    Ok(store::load(&app))
+}
+
+/// 新增或更新一个连接（不保存密码）；`id` 为空时由后端生成。保存后自动设为当前连接。
+#[tauri::command]
+pub async fn save_connection(
+    app: tauri::AppHandle,
+    conn: SavedConnection,
+) -> Result<SavedConnection, String> {
+    let mut state = store::load(&app);
+    let mut saved = conn;
+
+    if saved.id.trim().is_empty() {
+        saved.id = SavedConnection::new_id();
+        state.connections.push(saved.clone());
+    } else if let Some(existing) = state.connections.iter_mut().find(|c| c.id == saved.id) {
+        *existing = saved.clone();
+    } else {
+        state.connections.push(saved.clone());
+    }
+
+    state.active_connection = Some(saved.id.clone());
+    store::save(&app, &state).map_err(to_msg)?;
+    Ok(saved)
+}
+
+/// 删除一个连接；若删除的是当前连接，自动切换到剩下的第一个。
+#[tauri::command]
+pub async fn delete_connection(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let mut state = store::load(&app);
+    state.connections.retain(|c| c.id != id);
+    if state.active_connection.as_deref() == Some(id.as_str()) {
+        state.active_connection = state.connections.first().map(|c| c.id.clone());
+    }
+    store::save(&app, &state).map_err(to_msg)
+}
+
+/// 切换当前使用的连接。
+#[tauri::command]
+pub async fn set_active_connection(
+    app: tauri::AppHandle,
+    id: Option<String>,
+) -> Result<(), String> {
+    let mut state = store::load(&app);
+    state.active_connection = id;
+    store::save(&app, &state).map_err(to_msg)
+}
+
+/// 清空导出历史。
+#[tauri::command]
+pub async fn clear_history(app: tauri::AppHandle) -> Result<(), String> {
+    let mut state = store::load(&app);
+    state.history.clear();
+    store::save(&app, &state).map_err(to_msg)
+}
+
+/// 导出文档。可只导出勾选的表；成功后写入导出历史。
 #[tauri::command]
 pub async fn export_document(
+    app: tauri::AppHandle,
     conn: ConnectionParams,
     params: ExportParams,
 ) -> Result<ExportResult, String> {
@@ -84,9 +148,18 @@ pub async fn export_document(
     }
 
     let opts = mysql_options(&conn, &params.database);
-    let tables = load_tables(&opts).await.map_err(to_msg)?;
+    let mut tables = load_tables(&opts).await.map_err(to_msg)?;
     if tables.is_empty() {
         return Err(format!("数据库 {} 中没有任何基础表", params.database));
+    }
+
+    // 仅导出勾选的表
+    if let Some(wanted) = params.tables.as_ref().filter(|w| !w.is_empty()) {
+        let wanted: HashSet<&str> = wanted.iter().map(String::as_str).collect();
+        tables.retain(|t| wanted.contains(t.name.as_str()));
+        if tables.is_empty() {
+            return Err("选中的表在数据库中不存在，请重新读取表结构".to_string());
+        }
     }
 
     let title = if params.title.trim().is_empty() {
@@ -102,8 +175,9 @@ pub async fn export_document(
     );
 
     let report = export(&tables, &options, out).map_err(to_msg)?;
+    let elapsed_ms = started.elapsed().as_millis();
 
-    Ok(ExportResult {
+    let result = ExportResult {
         out_path: report.out_path.display().to_string(),
         table_count: report.table_count,
         sheet_count: report.sheet_count,
@@ -112,6 +186,25 @@ pub async fn export_document(
             .into_iter()
             .map(|(original, actual)| RenamedSheet { original, actual })
             .collect(),
-        elapsed_ms: started.elapsed().as_millis(),
-    })
+        elapsed_ms,
+    };
+
+    // 记录导出历史（失败不影响导出结果）
+    let mut state = store::load(&app);
+    state.history.insert(
+        0,
+        HistoryEntry {
+            time: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            database: params.database.clone(),
+            format: format.to_string(),
+            out_path: result.out_path.clone(),
+            table_count: result.table_count,
+            elapsed_ms,
+        },
+    );
+    if let Err(err) = store::save(&app, &state) {
+        eprintln!("[DBScribe] 写入导出历史失败：{err:#}");
+    }
+
+    Ok(result)
 }

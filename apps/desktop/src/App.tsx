@@ -1,32 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { ConnectionManager } from "./components/ConnectionManager";
+import type {
+  AppState,
+  ConnectionParams,
+  ExportResult,
+  HistoryEntry,
+  SavedConnection,
+  TableSummary,
+} from "./types";
 import "./App.css";
-
-interface ConnectionParams {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-}
-
-interface TableSummary {
-  name: string;
-  comment: string;
-  column_count: number;
-}
-
-interface RenamedSheet {
-  original: string;
-  actual: string;
-}
-
-interface ExportResult {
-  out_path: string;
-  table_count: number;
-  sheet_count: number;
-  renamed: RenamedSheet[];
-  elapsed_ms: number;
-}
 
 const FORMATS = [
   { value: "excel", label: "Excel (.xlsx)", ext: "xlsx" },
@@ -43,15 +28,23 @@ function errText(err: unknown): string {
 }
 
 function App() {
+  // 连接列表与当前连接
+  const [connections, setConnections] = useState<SavedConnection[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [remember, setRemember] = useState(true);
+
   const [conn, setConn] = useState<ConnectionParams>({
     host: "127.0.0.1",
     port: 3306,
     user: "root",
     password: "",
   });
+
   const [databases, setDatabases] = useState<string[]>([]);
   const [database, setDatabase] = useState("");
   const [tables, setTables] = useState<TableSummary[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [format, setFormat] = useState("excel");
   const [sheetMode, setSheetMode] = useState("multi");
@@ -60,13 +53,77 @@ function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ExportResult | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const formatMeta = FORMATS.find((f) => f.value === format) ?? FORMATS[0];
+  const activeConnection = useMemo(
+    () => connections.find((c) => c.id === activeId) ?? null,
+    [connections, activeId],
+  );
 
-  // 切库时自动带出默认标题
+  const refreshState = useCallback(async (): Promise<AppState> => {
+    const state = await invoke<AppState>("load_app_state");
+    setConnections(state.connections ?? []);
+    setActiveId(state.active_connection ?? null);
+    setHistory(state.history ?? []);
+    return state;
+  }, []);
+
+  /** 把某个已保存连接应用到表单，并清空库/表等派生状态 */
+  const applyConnection = useCallback((c: SavedConnection) => {
+    setActiveId(c.id);
+    setConn({ host: c.host, port: c.port, user: c.user, password: "" });
+    setDatabases([]);
+    setDatabase("");
+    setTables([]);
+    setSelected(new Set());
+    setResult(null);
+    setError("");
+  }, []);
+
+  // 启动时恢复连接列表与历史
+  useEffect(() => {
+    refreshState()
+      .then((state) => {
+        const active =
+          state.connections.find((c) => c.id === state.active_connection) ?? state.connections[0];
+        if (active) applyConnection(active);
+      })
+      .catch(() => undefined);
+  }, [refreshState, applyConnection]);
+
   useEffect(() => {
     if (database) setTitle(`${database}数据库设计文档`);
   }, [database]);
+
+  const selectConnection = async (id: string) => {
+    if (!id) return;
+    const target = connections.find((c) => c.id === id);
+    if (!target) return;
+    applyConnection(target);
+    await invoke("set_active_connection", { id }).catch(() => undefined);
+  };
+
+  /** 记住当前表单的连接信息（新增或更新当前连接） */
+  const rememberConnection = useCallback(async () => {
+    if (!remember) return;
+    try {
+      await invoke<SavedConnection>("save_connection", {
+        conn: {
+          id: activeConnection?.id ?? "",
+          name:
+            activeConnection?.name?.trim() ||
+            `${conn.user}@${conn.host}${conn.port !== 3306 ? `:${conn.port}` : ""}`,
+          host: conn.host,
+          port: conn.port,
+          user: conn.user,
+        },
+      });
+      await refreshState();
+    } catch {
+      /* 记住连接失败不影响主流程 */
+    }
+  }, [remember, activeConnection, conn, refreshState]);
 
   const testConnection = useCallback(async () => {
     setBusy("正在连接数据库…");
@@ -76,17 +133,16 @@ function App() {
       const msg = await invoke<string>("test_connection", { conn });
       const list = await invoke<string[]>("list_databases_cmd", { conn });
       setDatabases(list);
-      setDatabase((prev) => prev || list[0] || "");
-      setError("");
-      setResult(null);
+      setDatabase((prev) => (prev && list.includes(prev) ? prev : list[0] || ""));
+      await rememberConnection();
       alert(msg);
     } catch (e) {
-      setError(errText(e));
       setDatabases([]);
+      setError(errText(e));
     } finally {
       setBusy(null);
     }
-  }, [conn]);
+  }, [conn, rememberConnection]);
 
   const loadTables = useCallback(async () => {
     if (!database) return;
@@ -94,27 +150,91 @@ function App() {
     setError("");
     setResult(null);
     try {
-      const list = await invoke<TableSummary[]>("list_tables_cmd", {
-        conn,
-        database,
-      });
+      const list = await invoke<TableSummary[]>("list_tables_cmd", { conn, database });
       setTables(list);
+      setSelected(new Set(list.map((t) => t.name))); // 默认全选
+      await rememberConnection();
     } catch (e) {
       setTables([]);
+      setSelected(new Set());
       setError(errText(e));
     } finally {
       setBusy(null);
     }
-  }, [conn, database]);
+  }, [conn, database, rememberConnection]);
+
+  const visibleTables = useMemo(() => {
+    const kw = filter.trim().toLowerCase();
+    if (!kw) return tables;
+    return tables.filter(
+      (t) => t.name.toLowerCase().includes(kw) || t.comment.toLowerCase().includes(kw),
+    );
+  }, [tables, filter]);
+
+  const selectedCount = useMemo(
+    () => tables.reduce((n, t) => (selected.has(t.name) ? n + 1 : n), 0),
+    [tables, selected],
+  );
+  const totalColumns = useMemo(
+    () => tables.reduce((sum, t) => sum + t.column_count, 0),
+    [tables],
+  );
+
+  const toggleTable = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      visibleTables.forEach((t) => next.add(t.name));
+      return next;
+    });
+  };
+  const clearAll = () => setSelected(new Set());
+  const invertVisible = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      visibleTables.forEach((t) => {
+        if (next.has(t.name)) next.delete(t.name);
+        else next.add(t.name);
+      });
+      return next;
+    });
+  };
+
+  const chooseDirectory = useCallback(async () => {
+    try {
+      const dir = await openDialog({ directory: true, multiple: false, defaultPath: outDir });
+      if (typeof dir === "string" && dir) setOutDir(dir);
+    } catch (e) {
+      setError(errText(e));
+    }
+  }, [outDir]);
 
   const doExport = useCallback(async () => {
     if (!database) {
       setError("请先选择数据库");
       return;
     }
+    if (selectedCount === 0) {
+      setError("请至少勾选一张表");
+      return;
+    }
     const fileName = `${(title || `${database}数据库设计文档`).replace(/[\\/:*?"<>|]/g, "_")}.${formatMeta.ext}`;
     const sep = outDir.includes("\\") ? "\\" : "/";
-    const outPath = outDir.endsWith("/") || outDir.endsWith("\\") ? `${outDir}${fileName}` : `${outDir}${sep}${fileName}`;
+    const outPath =
+      outDir.endsWith("/") || outDir.endsWith("\\")
+        ? `${outDir}${fileName}`
+        : `${outDir}${sep}${fileName}`;
+
+    const chosen = tables.filter((t) => selected.has(t.name)).map((t) => t.name);
+    const tablesParam = chosen.length === tables.length ? null : chosen;
 
     setBusy("正在导出文档…");
     setError("");
@@ -128,30 +248,48 @@ function App() {
           format,
           sheet_mode: sheetMode,
           out_path: outPath,
+          tables: tablesParam,
         },
       });
       setResult(res);
+      refreshState()
+        .then((s) => setHistory(s.history ?? []))
+        .catch(() => undefined);
     } catch (e) {
       setError(errText(e));
     } finally {
       setBusy(null);
     }
-  }, [conn, database, title, format, sheetMode, outDir, formatMeta.ext]);
+  }, [
+    conn,
+    database,
+    title,
+    format,
+    sheetMode,
+    outDir,
+    formatMeta.ext,
+    tables,
+    selected,
+    selectedCount,
+    refreshState,
+  ]);
 
-  const visibleTables = useMemo(() => {
-    const kw = filter.trim().toLowerCase();
-    if (!kw) return tables;
-    return tables.filter(
-      (t) =>
-        t.name.toLowerCase().includes(kw) ||
-        t.comment.toLowerCase().includes(kw),
-    );
-  }, [tables, filter]);
+  const revealPath = useCallback(async (path: string) => {
+    try {
+      await revealItemInDir(path);
+    } catch (e) {
+      setError(errText(e));
+    }
+  }, []);
 
-  const totalColumns = useMemo(
-    () => tables.reduce((sum, t) => sum + t.column_count, 0),
-    [tables],
-  );
+  const clearHistory = useCallback(async () => {
+    try {
+      await invoke("clear_history");
+      setHistory([]);
+    } catch (e) {
+      setError(errText(e));
+    }
+  }, []);
 
   return (
     <div className="app">
@@ -169,38 +307,53 @@ function App() {
         {/* 左栏：连接与导出设置 */}
         <section className="panel left">
           <h2>连接</h2>
-          <div className="field">
-            <label>主机</label>
-            <input
-              value={conn.host}
-              onChange={(e) => setConn({ ...conn, host: e.target.value })}
-            />
+          <div className="row">
+            <select
+              value={activeId ?? ""}
+              onChange={(e) => selectConnection(e.target.value)}
+              disabled={connections.length === 0}
+            >
+              {connections.length === 0 && <option value="">未保存的连接</option>}
+              {connections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}（{c.host}:{c.port}）
+                </option>
+              ))}
+            </select>
+            <button onClick={() => setManagerOpen(true)}>管理</button>
           </div>
-          <div className="field">
-            <label>端口</label>
-            <input
-              type="number"
-              value={conn.port}
-              onChange={(e) =>
-                setConn({ ...conn, port: Number(e.target.value) || 3306 })
-              }
-            />
+
+          <div className="row">
+            <div className="field grow">
+              <label>主机</label>
+              <input value={conn.host} onChange={(e) => setConn({ ...conn, host: e.target.value })} />
+            </div>
+            <div className="field" style={{ width: 96 }}>
+              <label>端口</label>
+              <input
+                type="number"
+                value={conn.port}
+                onChange={(e) => setConn({ ...conn, port: Number(e.target.value) || 3306 })}
+              />
+            </div>
           </div>
           <div className="field">
             <label>用户</label>
-            <input
-              value={conn.user}
-              onChange={(e) => setConn({ ...conn, user: e.target.value })}
-            />
+            <input value={conn.user} onChange={(e) => setConn({ ...conn, user: e.target.value })} />
           </div>
           <div className="field">
             <label>密码</label>
             <input
               type="password"
               value={conn.password}
+              placeholder="不会保存到本地"
               onChange={(e) => setConn({ ...conn, password: e.target.value })}
             />
           </div>
+          <label className="checkbox">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            连接成功后保存该连接（不含密码）
+          </label>
           <button className="primary" disabled={!!busy} onClick={testConnection}>
             测试连接
           </button>
@@ -249,19 +402,20 @@ function App() {
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="field">
-            <label>输出目录</label>
-            <input value={outDir} onChange={(e) => setOutDir(e.target.value)} />
+            <label>导出目录</label>
+            <div className="row">
+              <input value={outDir} onChange={(e) => setOutDir(e.target.value)} />
+              <button onClick={chooseDirectory} title="选择目录">
+                浏览…
+              </button>
+            </div>
           </div>
-          <button
-            className="primary"
-            disabled={!database || !!busy}
-            onClick={doExport}
-          >
-            开始导出
+          <button className="primary" disabled={!database || !!busy} onClick={doExport}>
+            导出{selectedCount > 0 ? `选中的 ${selectedCount} 张表` : ""}
           </button>
         </section>
 
-        {/* 右栏：表列表与结果 */}
+        {/* 右栏：表列表、结果与历史 */}
         <section className="panel right">
           <div className="toolbar">
             <div>
@@ -269,7 +423,7 @@ function App() {
               <span className="muted">
                 {" "}
                 {tables.length > 0 &&
-                  `· ${tables.length} 张表 · ${totalColumns} 个列`}
+                  `· 共 ${tables.length} 张表 / ${totalColumns} 列 · 已选 ${selectedCount}`}
               </span>
             </div>
             <input
@@ -281,13 +435,27 @@ function App() {
             />
           </div>
 
+          {tables.length > 0 && (
+            <div className="bulk">
+              <button onClick={selectAllVisible}>全选{filter ? "筛选结果" : ""}</button>
+              <button onClick={invertVisible}>反选{filter ? "筛选结果" : ""}</button>
+              <button onClick={clearAll}>全不选</button>
+              <span className="muted">
+                当前显示 {visibleTables.length} 张，已选 {selectedCount} 张
+              </span>
+            </div>
+          )}
+
           {busy && <div className="toast info">{busy}</div>}
           {error && <div className="toast error">{error}</div>}
 
           {result && (
             <div className="toast success">
-              <div>
-                导出成功：{result.out_path}
+              <div className="row between">
+                <div>导出成功：{result.out_path}</div>
+                <button className="small" onClick={() => revealPath(result.out_path)}>
+                  打开所在文件夹
+                </button>
               </div>
               <div className="muted">
                 表数量 {result.table_count}
@@ -307,9 +475,7 @@ function App() {
                     ))}
                   </ul>
                   {result.renamed.length > 50 && (
-                    <p className="muted">
-                      仅显示前 50 条，其余 {result.renamed.length - 50} 条略
-                    </p>
+                    <p className="muted">仅显示前 50 条，其余 {result.renamed.length - 50} 条略</p>
                   )}
                 </details>
               )}
@@ -319,23 +485,34 @@ function App() {
           <div className="table-wrap">
             {visibleTables.length === 0 ? (
               <div className="empty">
-                {tables.length === 0
-                  ? "选择数据库后点击「读取表结构」"
-                  : "没有匹配的表"}
+                {tables.length === 0 ? "选择数据库后点击「读取表结构」" : "没有匹配的表"}
               </div>
             ) : (
               <table>
                 <thead>
                   <tr>
-                    <th style={{ width: 56 }}>#</th>
+                    <th style={{ width: 36 }} />
+                    <th style={{ width: 52 }}>#</th>
                     <th>表名</th>
                     <th>注释</th>
-                    <th style={{ width: 72 }}>列数</th>
+                    <th style={{ width: 64 }}>列数</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleTables.map((t, i) => (
-                    <tr key={t.name}>
+                    <tr
+                      key={t.name}
+                      className={selected.has(t.name) ? "selected" : ""}
+                      onClick={() => toggleTable(t.name)}
+                    >
+                      <td className="center">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(t.name)}
+                          onChange={() => toggleTable(t.name)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
                       <td className="num">{i + 1}</td>
                       <td className="mono">{t.name}</td>
                       <td>{t.comment}</td>
@@ -346,8 +523,43 @@ function App() {
               </table>
             )}
           </div>
+
+          <div className="history">
+            <div className="toolbar">
+              <strong>最近导出</strong>
+              {history.length > 0 && (
+                <button className="small" onClick={clearHistory}>
+                  清空
+                </button>
+              )}
+            </div>
+            {history.length === 0 ? (
+              <div className="muted small">还没有导出记录</div>
+            ) : (
+              <ul>
+                {history.map((h, idx) => (
+                  <li key={`${h.time}-${idx}`} onClick={() => revealPath(h.out_path)}>
+                    <span className="muted">{h.time}</span>
+                    <span className="mono">{h.database}</span>
+                    <span className="tag">{h.format}</span>
+                    <span className="muted">{h.table_count} 表</span>
+                    <span className="path">{h.out_path}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
       </main>
+
+      <ConnectionManager
+        open={managerOpen}
+        connections={connections}
+        activeId={activeId}
+        onClose={() => setManagerOpen(false)}
+        onRefresh={refreshState}
+        onUse={applyConnection}
+      />
     </div>
   );
 }
