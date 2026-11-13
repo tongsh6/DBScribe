@@ -55,6 +55,10 @@ jobs:
         # pnpm 12 的供应链策略会拒绝刚发布的依赖，--trust-lockfile 跳过校验
         run: pnpm install --frozen-lockfile --trust-lockfile
 
+      - name: 前端 Lint（hooks 规则）
+        working-directory: apps/desktop
+        run: pnpm lint
+
       - name: 前端类型检查与构建
         working-directory: apps/desktop
         run: pnpm build

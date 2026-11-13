@@ -399,8 +399,7 @@ function App() {
     [conn, database],
   );
 
-  const visibleTables = useMemo(() => {
-    // 监听 Oracle 客户端下载进度
+  // 监听 Oracle 客户端下载进度
   useEffect(() => {
     const unlisten = listen<{ done: number; total: number; percent: number }>(
       "oracle-client-progress",
@@ -422,7 +421,8 @@ function App() {
       .catch(() => setDamengDriver(null));
   }, [conn.db_type]);
 
-  // 搜索支持多个关键词（空格分隔），需全部命中
+  const visibleTables = useMemo(() => {
+    // 搜索支持多个关键词（空格分隔），需全部命中
     const terms = debouncedFilter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let list = tables;
     if (terms.length > 0) {
