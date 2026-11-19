@@ -53,6 +53,14 @@ impl ConnectionOptions {
     pub fn mongodb_uri(&self) -> String {
         let host = self.host.trim();
         if is_uri(host) {
+            // 连接串自带认证信息时原样使用：可覆盖副本集 / TLS / authSource 等场景
+            if split_uri_password(host).1.is_some() {
+                return host.to_string();
+            }
+            // 保存过的连接串已剥离密码，用凭据里的密码补回
+            if !self.password.is_empty() {
+                return inject_uri_password(host, &self.password);
+            }
             return host.to_string();
         }
         if self.user.trim().is_empty() {
@@ -102,26 +110,54 @@ fn percent_encode(text: &str) -> String {
     out
 }
 
+/// 连接串 userinfo 的字节范围 [start, end)（不含 `@`）。
+///
+/// `@` 之前若出现 `/`，说明 `@` 不在 userinfo 段，返回 None。
+fn userinfo_range(uri: &str) -> Option<(usize, usize)> {
+    let start = uri.find("://")? + 3;
+    let end = start + uri[start..].find('@')?;
+    if uri[start..end].contains('/') {
+        return None;
+    }
+    Some((start, end))
+}
+
+/// 拆出连接串里的密码：返回（去掉密码的连接串，密码）。
+///
+/// 密码按原始编码形式返回，写回时原样插入，避免重复编码。
+/// 无密码、非连接串时返回 `(uri, None)`。
+pub fn split_uri_password(uri: &str) -> (String, Option<String>) {
+    let Some((start, end)) = userinfo_range(uri) else {
+        return (uri.to_string(), None);
+    };
+    let Some(colon_rel) = uri[start..end].rfind(':') else {
+        return (uri.to_string(), None);
+    };
+    let colon = start + colon_rel;
+    let password = uri[colon + 1..end].to_string();
+    (format!("{}{}", &uri[..colon], &uri[end..]), Some(password))
+}
+
+/// 把密码写回连接串的 userinfo；已有密码时替换，没有 userinfo 时原样返回。
+///
+/// 密码按原样插入（调用方负责编码），与 `split_uri_password` 成对使用。
+pub fn inject_uri_password(uri: &str, password: &str) -> String {
+    let Some((start, end)) = userinfo_range(uri) else {
+        return uri.to_string();
+    };
+    let userinfo = &uri[start..end];
+    let user = match userinfo.rfind(':') {
+        Some(colon) => &userinfo[..colon],
+        None => userinfo,
+    };
+    format!("{}{}:{}{}", &uri[..start], user, password, &uri[end..])
+}
+
 /// 把连接串里的密码替换为 `***`，避免日志与错误信息泄漏。
 fn mask_uri_password(uri: &str) -> String {
-    let Some(scheme_end) = uri.find("://") else {
-        return uri.to_string();
-    };
-    let rest_start = scheme_end + 3;
-    let Some(at_rel) = uri[rest_start..].find('@') else {
-        return uri.to_string();
-    };
-    let at = rest_start + at_rel;
-    // @ 之前出现 /，说明不在 userinfo 段，保持原样
-    if uri[rest_start..at].contains('/') {
-        return uri.to_string();
-    }
-    match uri[rest_start..at].rfind(':') {
-        Some(colon_rel) => {
-            let colon = rest_start + colon_rel;
-            format!("{}***{}", &uri[..colon + 1], &uri[at..])
-        }
-        None => uri.to_string(),
+    match split_uri_password(uri) {
+        (_, None) => uri.to_string(),
+        (clean, Some(_)) => inject_uri_password(&clean, "***"),
     }
 }
 
@@ -179,6 +215,33 @@ mod tests {
         // 无用户名：不带认证段
         let anonymous = ConnectionOptions::new(DbType::MongoDb, "127.0.0.1", 27017, "", "", "shop");
         assert_eq!(anonymous.mongodb_uri(), "mongodb://127.0.0.1:27017/");
+    }
+
+    #[test]
+    fn uri_password_can_be_split_and_injected() {
+        let uri = "mongodb://u:p%40ss@h:27017/db?authSource=admin";
+        let (clean, password) = split_uri_password(uri);
+        assert_eq!(clean, "mongodb://u@h:27017/db?authSource=admin");
+        assert_eq!(password.as_deref(), Some("p%40ss"));
+        assert_eq!(inject_uri_password(&clean, "p%40ss"), uri);
+
+        let (plain, none) = split_uri_password("mongodb://h:27017");
+        assert_eq!(plain, "mongodb://h:27017");
+        assert!(none.is_none());
+    }
+
+    #[test]
+    fn saved_uri_without_password_uses_credential_password() {
+        // 保存时密码被剥离，连接时从系统凭据补回
+        let opts = ConnectionOptions::new(
+            DbType::MongoDb,
+            "mongodb://u@h:27017/db",
+            27017,
+            "",
+            "secret",
+            "db",
+        );
+        assert_eq!(opts.mongodb_uri(), "mongodb://u:secret@h:27017/db");
     }
 
     #[test]

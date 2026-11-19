@@ -834,6 +834,11 @@ function App() {
                   />
                   同时记住密码（存入系统凭据管理器）
                 </label>
+                {isMongoUri && (
+                  <div className="driver-tip ok">
+                    连接串里的密码在保存时会移入系统凭据管理器，不会以明文写入配置文件
+                  </div>
+                )}
                 <button
                   className="primary"
                   disabled={!!busy}

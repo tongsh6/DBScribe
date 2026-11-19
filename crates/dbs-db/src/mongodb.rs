@@ -131,6 +131,12 @@ pub async fn load_tables_with(
         tables.iter().map(|t| t.indexes.len()).sum::<usize>(),
         tables.iter().map(|t| t.columns.len()).sum::<usize>()
     );
+    let declared = tables
+        .iter()
+        .filter(|t| t.note.contains("validator"))
+        .count();
+    let sampled = tables.iter().filter(|t| t.note.contains("采样")).count();
+    tracing::info!("字段来源：{declared} 个集合来自 validator 声明，{sampled} 个来自采样");
     Ok(tables)
 }
 
@@ -213,11 +219,27 @@ async fn load_columns(
         .as_ref()
         .map(fields::parse_json_schema)
         .unwrap_or_default();
+    // 覆盖率：样本数对比集合总量，让读者知道这份推断的代表性
+    let total_docs = if infer {
+        total_documents(database, &spec.name).await.ok()
+    } else {
+        None
+    };
     Ok(fields::merge_columns(
         &declared,
         infer.then_some(&observed),
         docs.len(),
+        total_docs,
     ))
+}
+
+/// 集合的估算文档数（用于样本覆盖率）；失败不影响导出。
+async fn total_documents(database: &Database, collection: &str) -> Result<u64> {
+    database
+        .collection::<Document>(collection)
+        .estimated_document_count()
+        .await
+        .context("统计集合文档数失败")
 }
 
 /// 采样一个集合；`$sample` 本身是随机的，因此结果必须带来源标注。

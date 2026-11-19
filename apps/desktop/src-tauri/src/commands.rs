@@ -9,13 +9,13 @@ use crate::models::{
 use crate::secrets;
 use crate::store;
 use chrono::Local;
-use tauri::Emitter;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
-use dbs_db::{ConnectionOptions, list_databases, load_tables};
-use dbs_doc::{ExportOptions, export};
+use dbs_db::{list_databases, load_tables, split_uri_password, ConnectionOptions};
+use dbs_doc::{export, ExportOptions};
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
+use tauri::Emitter;
 
 /// 把界面参数转成驱动层连接参数（按所选数据库类型）
 fn to_options(conn: &ConnectionParams, database: &str) -> Result<ConnectionOptions, String> {
@@ -122,6 +122,19 @@ pub async fn save_connection(
 ) -> Result<SavedConnection, String> {
     let mut state = store::load(&app);
     let mut saved = conn;
+    let mut password = password;
+
+    // MongoDB 连接串可能自带密码：不能随 host 明文落盘，剥离后交给系统凭据存储
+    if saved.db_type == "mongodb" {
+        let (host, uri_password) = split_uri_password(saved.host.trim());
+        if let Some(uri_password) = uri_password {
+            saved.host = host;
+            // 调用方未指定密码时用连接串里的密码；显式清除（Some("")）时尊重用户意图
+            if password.is_none() {
+                password = Some(uri_password);
+            }
+        }
+    }
 
     if saved.id.trim().is_empty() {
         saved.id = SavedConnection::new_id();
@@ -220,8 +233,7 @@ pub async fn export_document(
     let out = Path::new(&params.out_path);
     if let Some(parent) = out.parent() {
         if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("创建输出目录失败：{e}"))?;
+            std::fs::create_dir_all(parent).map_err(|e| format!("创建输出目录失败：{e}"))?;
         }
     }
 
@@ -266,10 +278,7 @@ pub async fn export_document(
         out.to_path_buf()
     };
     if target != out {
-        eprintln!(
-            "[DBScribe] 目标文件已存在，改写入 {}",
-            target.display()
-        );
+        eprintln!("[DBScribe] 目标文件已存在，改写入 {}", target.display());
     }
 
     // 把生成进度通过事件推给前端（每完成一张表一次）

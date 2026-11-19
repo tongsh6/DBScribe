@@ -292,13 +292,27 @@ pub enum FieldOrigin {
     /// 全部来自 validator 声明。
     Declared,
     /// 全部来自采样观察。
-    Sampled { sample_size: usize },
+    Sampled {
+        sample_size: usize,
+        /// 集合估算文档数；用于说明采样覆盖率，统计失败时为 None。
+        total_docs: Option<u64>,
+    },
     /// 声明为主，采样补缺。
     Mixed {
         declared: usize,
         sampled: usize,
         sample_size: usize,
+        /// 集合估算文档数；用于说明采样覆盖率，统计失败时为 None。
+        total_docs: Option<u64>,
     },
+}
+
+/// 覆盖率说明；没有总数时为空，避免「0 条文档」这类噪音。
+fn coverage(total_docs: Option<u64>) -> String {
+    match total_docs {
+        Some(total) if total > 0 => format!("（共约 {total} 条文档）"),
+        _ => String::new(),
+    }
 }
 
 impl FieldOrigin {
@@ -306,15 +320,21 @@ impl FieldOrigin {
     pub fn note(&self) -> String {
         match self {
             FieldOrigin::Declared => "字段来源：collection validator（$jsonSchema 声明）".to_string(),
-            FieldOrigin::Sampled { sample_size } => {
-                format!("字段来源：{sample_size} 条采样推断，字段集合可能随数据变化")
-            }
+            FieldOrigin::Sampled {
+                sample_size,
+                total_docs,
+            } => format!(
+                "字段来源：{sample_size} 条采样推断{}，字段集合可能随数据变化",
+                coverage(*total_docs)
+            ),
             FieldOrigin::Mixed {
                 declared,
                 sampled,
                 sample_size,
+                total_docs,
             } => format!(
-                "字段来源：validator 声明 {declared} 个字段 + {sample_size} 条采样补充 {sampled} 个字段"
+                "字段来源：validator 声明 {declared} 个字段 + {sample_size} 条采样补充 {sampled} 个字段{}",
+                coverage(*total_docs)
             ),
         }
     }
@@ -329,6 +349,7 @@ pub fn merge_columns(
     declared: &[DeclaredField],
     sampled: Option<&BTreeMap<String, FieldStats>>,
     sample_size: usize,
+    total_docs: Option<u64>,
 ) -> (Vec<ColumnInfo>, Option<FieldOrigin>) {
     let mut columns: Vec<ColumnInfo> = Vec::new();
     let mut declared_paths: BTreeSet<&str> = BTreeSet::new();
@@ -387,28 +408,38 @@ pub fn merge_columns(
         }
     }
 
-    ensure_id_column(&mut columns);
+    ensure_id_column(&mut columns, sampled);
     for (idx, column) in columns.iter_mut().enumerate() {
         column.order = (idx + 1) as u32;
     }
 
     let sampled_columns = sampled.map(|fields| fields.len()).unwrap_or(0);
-    let origin = field_origin(declared, sampled_columns, sampled_extras, sample_size);
+    let origin = field_origin(
+        declared,
+        sampled_columns,
+        sampled_extras,
+        sample_size,
+        total_docs,
+    );
     (columns, origin)
 }
 
-/// 空集合也要有主键列。
-fn ensure_id_column(columns: &mut Vec<ColumnInfo>) {
+/// 空集合也要有主键列；类型优先用采样实测值，完全没数据时才按 ObjectId 假定。
+fn ensure_id_column(columns: &mut Vec<ColumnInfo>, sampled: Option<&BTreeMap<String, FieldStats>>) {
     if columns.iter().any(|column| column.name == "_id") {
         return;
     }
+    let data_type = sampled
+        .and_then(|fields| fields.get("_id"))
+        .map(|stats| stats.type_text())
+        .unwrap_or_else(|| "objectId".to_string());
     columns.insert(
         0,
         ColumnInfo {
             order: 1,
             name: "_id".to_string(),
             length: String::new(),
-            data_type: "objectId".to_string(),
+            data_type,
             is_primary_key: true,
             is_auto_increment: false,
             nullable: false,
@@ -423,12 +454,16 @@ fn field_origin(
     sampled_columns: usize,
     sampled_extras: usize,
     sample_size: usize,
+    total_docs: Option<u64>,
 ) -> Option<FieldOrigin> {
     if declared.is_empty() {
         return if sampled_columns == 0 {
             None
         } else {
-            Some(FieldOrigin::Sampled { sample_size })
+            Some(FieldOrigin::Sampled {
+                sample_size,
+                total_docs,
+            })
         };
     }
     if sampled_extras == 0 {
@@ -438,6 +473,7 @@ fn field_origin(
             declared: declared.len(),
             sampled: sampled_extras,
             sample_size,
+            total_docs,
         })
     }
 }
@@ -522,7 +558,7 @@ mod tests {
         let docs = vec![doc! { "_id": ObjectId::new(), "name": "a", "age": 1_i32, "extra": "x" }];
         let sampled = aggregate_documents(&docs);
 
-        let (columns, origin) = merge_columns(&declared, Some(&sampled), 1);
+        let (columns, origin) = merge_columns(&declared, Some(&sampled), 1, None);
         assert_eq!(columns[0].name, "_id");
         assert!(columns[0].is_primary_key);
         assert_eq!(columns[1].name, "name");
@@ -533,7 +569,8 @@ mod tests {
             Some(FieldOrigin::Mixed {
                 declared: 2,
                 sampled: 1,
-                sample_size: 1
+                sample_size: 1,
+                total_docs: None
             })
         );
         assert!(origin.unwrap().note().contains("validator 声明 2"));
@@ -541,11 +578,40 @@ mod tests {
 
     #[test]
     fn empty_collection_still_has_primary_key() {
-        let (columns, origin) = merge_columns(&[], None, 0);
+        let (columns, origin) = merge_columns(&[], None, 0, None);
         assert_eq!(columns.len(), 1);
         assert_eq!(columns[0].name, "_id");
         assert!(columns[0].is_primary_key);
         assert_eq!(origin, None);
+    }
+
+    #[test]
+    fn id_type_follows_sample_instead_of_guessing() {
+        let declared = vec![DeclaredField {
+            path: "name".into(),
+            types: vec!["string".into()],
+            required: true,
+        }];
+        let docs = vec![doc! { "_id": "uuid-1", "name": "a" }];
+        let sampled = aggregate_documents(&docs);
+        let (columns, _) = merge_columns(&declared, Some(&sampled), 1, None);
+        assert_eq!(columns[0].name, "_id");
+        assert_eq!(columns[0].data_type, "string");
+    }
+
+    #[test]
+    fn note_reports_sample_coverage() {
+        let with_total = FieldOrigin::Sampled {
+            sample_size: 200,
+            total_docs: Some(120_000),
+        };
+        assert!(with_total.note().contains("共约 120000 条文档"));
+
+        let without_total = FieldOrigin::Sampled {
+            sample_size: 200,
+            total_docs: None,
+        };
+        assert!(!without_total.note().contains("共约"));
     }
 
     #[test]

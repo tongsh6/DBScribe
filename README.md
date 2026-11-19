@@ -105,6 +105,24 @@ dbs export \
 | `--format` | 输出格式：`excel`（默认）/ `markdown` / `html` / `json` / `xml` / `word`；缺省按 `--out` 扩展名推断 |
 | `--title` | 文档标题，缺省为「{数据库名}数据库设计文档」 |
 
+MongoDB 的 `host` 可以直接写连接串；也可以像其他数据库一样分开传账号密码：
+
+```bash
+# 方式一：完整连接串（副本集 / TLS / authSource 都在里面）
+dbs export --driver mongodb \
+  --host 'mongodb://user@127.0.0.1:27017/?authSource=admin' \
+  --password "$DBS_PASSWORD" \
+  --database shop --out ./shop.md
+
+# 方式二：直接写带密码的连接串（注意命令行历史）
+dbs export --driver mongodb \
+  --host 'mongodb://user:password@127.0.0.1:27017/' \
+  --database shop --out ./shop.md
+```
+
+字段来自 collection validator（有声明时优先）或采样推断，文档会标注来源与采样覆盖率；
+`--no-infer-fields` 可只导出权威结构，`--sample-size` 可调整采样条数（默认 200）。
+
 先看看有哪些库：
 
 ```bash

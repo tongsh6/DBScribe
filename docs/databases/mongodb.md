@@ -114,6 +114,7 @@ MongoDB 是文档型数据库，与现有七种关系型数据库有本质差异
 ## 主键与索引
 
 - `_id` → 主键；`is_auto_increment` 恒为 `false`（自增列整体不输出，见下）
+- `_id` 类型优先用采样实测值；完全没数据可采样时才按 `objectId` 假定，不臆造其他类型
 - `listIndexes()` → 索引项：名称、列（按 key 顺序）、是否唯一、是否主键（`_id_`）
 - 特殊索引（`$text` / `2dsphere` 等）索引列直接显示表达式 key，如 `$text`
 - 索引选项写入列文本，保持 `IndexInfo` 模型不变：
@@ -154,8 +155,10 @@ MongoDB 接入不得让现有格式产生「专属于 MongoDB 的分支」，以
 ## 连接方式
 
 - `host` 以 `mongodb://` 或 `mongodb+srv://` 开头时，**直接作为连接串使用**，可覆盖副本集、TLS、`authSource` 等场景
+- 连接串**自带密码**时以它为准；连接串无密码时用 `password` 字段补回（保存过的连接依赖这条）
 - 否则拼接：`mongodb://{user}:{password}@{host}:{port}/?authSource=admin`，密码做 URL 编码
 - 默认端口：`27017`
+- **密码不落盘**：桌面端保存含密码的连接串时，密码被剥离并移入系统凭据管理器，配置文件里只留无密码 URI；读取时再拼接回去
 - 不扩展 `ConnectionOptions` 模型（保持连接模型简单）
 
 桌面端注意：host 识别为连接串时，`port` / `user` / `password` 输入框应置灰并提示「已按连接串解析」，避免用户填了连接串又填密码导致行为不可预期。
@@ -167,7 +170,8 @@ MongoDB 接入不得让现有格式产生「专属于 MongoDB 的分支」，以
 | 默认样本数 | 200 条 / collection |
 | 采样方式 | 每个 collection 一次 `$sample`（或 `--sample-mode deterministic` 的排序截断） |
 | 并发上限 | 4 个 collection 并行 |
-| 空 collection | 仍输出该集合，字段为空列表（与关系型空表一致） |
+| 空 collection | 仍输出该集合，只保留 `_id` 列 |
+| 覆盖率 | 表级标注写入集合估算文档数（`estimatedDocumentCount`），让读者判断样本代表性；统计失败时省略 |
 | 可调参数 | CLI `--sample-size`（默认 200）、`--no-infer-fields`；桌面端使用默认值 |
 
 采样是性能与准确度的折中：collection 很多时，每个都采样会变慢，因此需要并发上限并复用现有 export-progress 进度事件。
@@ -223,7 +227,7 @@ MongoDB 接入不得让现有格式产生「专属于 MongoDB 的分支」，以
 ## 测试要求
 
 - **纯函数单测**：字段路径展开、类型合并、可空判定、validator 解析、采样聚合、排序稳定性、标注文案
-- **集成测试**：Docker 起 mongo，覆盖全 BSON 类型、嵌套、数组、复合索引、TTL 索引、validator 集合、无 validator 集合、认证连接
+- **集成测试**：Docker 起 mongo，覆盖全 BSON 类型、嵌套、数组、复合索引、TTL 索引、validator 集合、无 validator 集合、空集合、自定义 `_id` 类型、权威模式（不采样）
 - **CI**：集成测试用 `#[ignore]` 标记，本地默认不跑；新增独立 job（仅 `ubuntu-latest` + `mongo:7` service）显式 `--ignored` 执行，不污染三平台矩阵
 
 ## 实现清单
@@ -256,6 +260,8 @@ MongoDB 接入不得让现有格式产生「专属于 MongoDB 的分支」，以
 | 桌面端数据库选项与真实 db_type 传递 | ✅ 已完成 |
 | 采样参数（`--sample-size` / `--no-infer-fields`） | ✅ 已完成；`--sample-mode deterministic` 仍为后续 |
 | 桌面端连接串置灰提示 | ✅ 已完成（host 识别为 `mongodb://` 时端口/账号/密码置灰） |
+| 连接串密码不落盘（剥离 + 系统凭据） | ✅ 已完成，含单测 |
+| 采样覆盖率标注（约 N 条文档） | ✅ 已完成，含集成测试 |
 | Docker 集成测试与 CI job | ✅ 已接入：`#[ignore]` 集成测试 + 仅 ubuntu 的 `mongodb` job（mongo:7 service）；已在本地 mongo:7.0 实例验证通过 |
 
 ## 分步落地

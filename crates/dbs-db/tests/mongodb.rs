@@ -5,11 +5,15 @@
 //! CI：由 `mongodb` job 提供 `mongo:7` service。
 
 use dbs_core::DbType;
+use dbs_db::mongodb::{load_tables_with, SampleConfig};
 use dbs_db::{load_tables, ConnectionOptions};
 use mongodb::bson::{doc, Document};
 use mongodb::Client;
 
 const DB_NAME: &str = "dbs_integration";
+/// 各测试用独立库名，避免并行执行时互相 drop。
+const DB_EMPTY: &str = "dbs_integration_empty";
+const DB_AUTH: &str = "dbs_integration_auth";
 
 fn uri() -> String {
     std::env::var("MONGO_URI").unwrap_or_else(|_| "mongodb://127.0.0.1:27017".to_string())
@@ -115,6 +119,12 @@ async fn reads_declared_and_sampled_fields_with_indexes() {
         "来源标注缺失：{}",
         orders.note
     );
+    // 覆盖率：样本数对比集合总量
+    assert!(
+        orders.note.contains("共约 2 条文档"),
+        "缺少采样覆盖率：{}",
+        orders.note
+    );
     let amount = orders
         .columns
         .iter()
@@ -139,6 +149,107 @@ async fn reads_declared_and_sampled_fields_with_indexes() {
         .find(|i| i.name == "ttl_1")
         .expect("缺少 ttl_1");
     assert!(ttl_index.columns[0].contains("TTL 3600s"));
+
+    database.drop().await.ok();
+}
+
+#[tokio::test]
+#[ignore = "需要真实 MongoDB 实例（本地或 CI service）"]
+async fn empty_collection_and_custom_id_type() {
+    let client = Client::with_uri_str(uri()).await.expect("连接失败");
+    let database = client.database(DB_EMPTY);
+    database.drop().await.ok();
+
+    database
+        .run_command(doc! { "create": "empty_logs" })
+        .await
+        .expect("创建空集合失败");
+    database
+        .collection::<Document>("events")
+        .insert_one(doc! { "_id": "evt-1", "payload": { "kind": "click", "tags": ["a", "b"] } })
+        .await
+        .expect("写入 events 失败");
+
+    let opts = ConnectionOptions::new(DbType::MongoDb, uri(), 27017, "", "", DB_EMPTY);
+    let tables = load_tables(&opts).await.expect("读取集合失败");
+
+    let empty = tables
+        .iter()
+        .find(|t| t.name == "empty_logs")
+        .expect("缺少空集合");
+    assert_eq!(empty.columns.len(), 1);
+    assert_eq!(empty.columns[0].name, "_id");
+    // 没有数据可采样时才按 ObjectId 假定
+    assert_eq!(empty.columns[0].data_type, "objectId");
+
+    let events = tables
+        .iter()
+        .find(|t| t.name == "events")
+        .expect("缺少 events");
+    // 采样实测的 _id 类型优先于假定的 ObjectId
+    assert_eq!(events.columns[0].data_type, "string");
+    assert!(events.columns.iter().any(|c| c.name == "payload.kind"));
+    assert!(events.columns.iter().any(|c| c.name == "payload.tags"));
+
+    database.drop().await.ok();
+}
+
+#[tokio::test]
+#[ignore = "需要真实 MongoDB 实例（本地或 CI service）"]
+async fn authoritative_mode_skips_sampling() {
+    let client = Client::with_uri_str(uri()).await.expect("连接失败");
+    let database = client.database(DB_AUTH);
+    database.drop().await.ok();
+
+    database
+        .run_command(doc! {
+            "create": "users",
+            "validator": { "$jsonSchema": {
+                "bsonType": "object",
+                "required": ["name"],
+                "properties": { "name": { "bsonType": "string" } },
+            } },
+        })
+        .await
+        .expect("创建 users 失败");
+    database
+        .collection::<Document>("users")
+        .insert_one(doc! { "name": "a", "extra": "x" })
+        .await
+        .expect("写入 users 失败");
+    database
+        .run_command(doc! { "create": "orders" })
+        .await
+        .expect("创建 orders 失败");
+
+    let opts = ConnectionOptions::new(DbType::MongoDb, uri(), 27017, "", "", DB_AUTH);
+    let config = SampleConfig {
+        sample_size: 200,
+        infer_fields: false,
+    };
+    let tables = load_tables_with(&opts, &config)
+        .await
+        .expect("读取集合失败");
+
+    let users = tables
+        .iter()
+        .find(|t| t.name == "users")
+        .expect("缺少 users");
+    assert!(users.note.contains("validator"));
+    assert!(
+        !users.columns.iter().any(|c| c.name == "extra"),
+        "权威模式不应补充采样字段"
+    );
+
+    let orders = tables
+        .iter()
+        .find(|t| t.name == "orders")
+        .expect("缺少 orders");
+    assert_eq!(orders.columns.len(), 1);
+    assert!(
+        orders.note.is_empty(),
+        "无 validator 且未采样时不应标注来源"
+    );
 
     database.drop().await.ok();
 }

@@ -17,7 +17,7 @@ pub mod sqlserver;
 use anyhow::Result;
 use dbs_core::{ColumnInfo, DbType, TableInfo};
 
-pub use options::ConnectionOptions;
+pub use options::{split_uri_password, ConnectionOptions};
 pub use oracle_client::{
     client_download_url, client_lib_name, ensure_client, ensure_initialized, installed_client_dir,
 };

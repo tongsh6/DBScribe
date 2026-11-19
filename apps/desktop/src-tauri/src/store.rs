@@ -17,7 +17,8 @@ fn store_path(app: &tauri::AppHandle) -> Result<PathBuf> {
         .path()
         .app_config_dir()
         .context("无法定位应用配置目录")?;
-    std::fs::create_dir_all(&dir).with_context(|| format!("创建配置目录失败：{}", dir.display()))?;
+    std::fs::create_dir_all(&dir)
+        .with_context(|| format!("创建配置目录失败：{}", dir.display()))?;
     Ok(dir.join(STORE_FILE))
 }
 
