@@ -280,21 +280,24 @@ fn write_tables_sheet(
             row += 1;
             ws.merge_range(row, 0, row, col_count - 1, "索引", &fmt_section())?;
             row += 1;
-            ws.write_string_with_format(row, 0, "名称", &fmt_header())?;
-            ws.write_string_with_format(row, 1, "列", &fmt_header())?;
-            ws.write_string_with_format(row, 2, "唯一", &fmt_header())?;
+            // 名称占 A:B、列占 C 到倒数第二列、唯一放最后一列，避免长索引名被窄列截断
+            ws.merge_range(row, 0, row, 1, "名称", &fmt_header())?;
+            ws.merge_range(row, 2, row, col_count - 1, "列", &fmt_header())?;
+            ws.write_string_with_format(row, col_count, "唯一", &fmt_header())?;
             row += 1;
             for index in indexes {
-                ws.write_string_with_format(row, 0, index.name.as_str(), &fmt_text())?;
-                ws.write_string_with_format(
+                ws.merge_range(row, 0, row, 1, index.name.as_str(), &fmt_text())?;
+                ws.merge_range(
                     row,
-                    1,
+                    2,
+                    row,
+                    col_count - 1,
                     index.columns.join(", ").as_str(),
                     &fmt_text(),
                 )?;
                 ws.write_string_with_format(
                     row,
-                    2,
+                    col_count,
                     if index.is_unique { "是" } else { "" },
                     &fmt_center(),
                 )?;
@@ -306,8 +309,8 @@ fn write_tables_sheet(
             row += 1;
             ws.merge_range(row, 0, row, col_count - 1, "外键", &fmt_section())?;
             row += 1;
-            ws.write_string_with_format(row, 0, "列", &fmt_header())?;
-            ws.write_string_with_format(row, 1, "引用", &fmt_header())?;
+            ws.merge_range(row, 0, row, 1, "列", &fmt_header())?;
+            ws.merge_range(row, 2, row, col_count - 1, "引用", &fmt_header())?;
             row += 1;
             for fk in &table.foreign_keys {
                 let target = if fk.ref_schema.is_empty() {
@@ -320,8 +323,15 @@ fn write_tables_sheet(
                     .iter()
                     .map(|column| format!("{target}.{column}"))
                     .collect();
-                ws.write_string_with_format(row, 0, fk.columns.join(", ").as_str(), &fmt_text())?;
-                ws.write_string_with_format(row, 1, refs.join(", ").as_str(), &fmt_text())?;
+                ws.merge_range(row, 0, row, 1, fk.columns.join(", ").as_str(), &fmt_text())?;
+                ws.merge_range(
+                    row,
+                    2,
+                    row,
+                    col_count - 1,
+                    refs.join(", ").as_str(),
+                    &fmt_text(),
+                )?;
                 row += 1;
             }
         }
@@ -332,7 +342,7 @@ fn write_tables_sheet(
         }
     }
 
-    let widths: [f64; 9] = [8.0, 34.0, 16.0, 10.0, 8.0, 8.0, 8.0, 20.0, 34.0];
+    let widths: [f64; 9] = [10.0, 34.0, 16.0, 10.0, 10.0, 10.0, 10.0, 24.0, 16.0];
     for (col, width) in widths.iter().enumerate() {
         ws.set_column_width(col as u16, *width)?;
     }

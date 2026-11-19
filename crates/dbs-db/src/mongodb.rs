@@ -378,8 +378,9 @@ fn decorate_column(column: String, doc: &Document) -> String {
     if doc.get_bool("hidden").unwrap_or(false) {
         text = format!("{text} (hidden)");
     }
-    if let Ok(partial) = doc.get_document("partialFilterExpression") {
-        text = format!("{text} (partial: {})", truncate(&partial.to_string(), 40));
+    // 只标记「是部分索引」：过滤条件 JSON 往往上百字符，展开会让导出表格溢出
+    if doc.get_document("partialFilterExpression").is_ok() {
+        text = format!("{text} (partial)");
     }
     text
 }
@@ -392,14 +393,6 @@ fn expiry_seconds(doc: &Document) -> Option<i64> {
         Some(Bson::Double(value)) => Some(*value as i64),
         _ => None,
     }
-}
-
-fn truncate(text: &str, max_chars: usize) -> String {
-    if text.chars().count() <= max_chars {
-        return text.to_string();
-    }
-    let head: String = text.chars().take(max_chars).collect();
-    format!("{head}…")
 }
 
 #[cfg(test)]
@@ -502,11 +495,5 @@ mod tests {
         }]);
         let indexes = parse_indexes(&reply);
         assert_eq!(indexes[0].columns, vec!["$text"]);
-    }
-
-    #[test]
-    fn truncate_keeps_char_boundary() {
-        assert_eq!(truncate("短文本", 10), "短文本");
-        assert_eq!(truncate("一二三四五", 3), "一二三…");
     }
 }
