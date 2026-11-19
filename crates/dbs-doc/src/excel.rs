@@ -8,7 +8,8 @@
 //! 大小写重复或撞上「目录/修订日志」而导致整个导出失败**。
 
 use crate::common::{
-    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+    column_headers, column_values, display_indexes, table_note, ExportOptions, ExportReport,
+    ProgressFn,
 };
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -142,6 +143,14 @@ fn fmt_section() -> Format {
         .set_border(FormatBorder::Thin)
 }
 
+/// 表级备注：灰色斜体，视觉权重低于表标题。
+fn fmt_note() -> Format {
+    Format::new()
+        .set_italic()
+        .set_font_color(Color::RGB(0x666666))
+        .set_align(FormatAlign::Left)
+}
+
 // ---------------------------------------------------------------- 各工作表
 
 /// 修订日志：版本号 / 修订日期 / 修订内容 / 修订人 / 审核人，预置 16 行空行。
@@ -233,6 +242,12 @@ fn write_tables_sheet(
         )?;
         ws.set_row_height(row, 18)?;
         row += 1;
+
+        // 表级备注（如字段来源）：弱化显示，插在标题与列头之间
+        if let Some(note) = table_note(table) {
+            ws.merge_range(row, 0, row, col_count - 1, note, &fmt_note())?;
+            row += 1;
+        }
 
         // 列头
         for (col, h) in headers.iter().enumerate() {

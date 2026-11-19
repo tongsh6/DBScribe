@@ -30,6 +30,7 @@ const DB_TYPES = [
   { value: "oracle", label: "Oracle", port: 1521 },
   { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881 },
   { value: "dameng", label: "达梦 DM8（需 ODBC 驱动）", port: 5236 },
+  { value: "mongodb", label: "MongoDB（host 可填连接串）", port: 27017 },
 ];
 
 const FORMATS = [
@@ -348,6 +349,10 @@ function App() {
   );
 
   const isSqlite = conn.db_type === "sqlite";
+
+  /** MongoDB 的 host 可以是完整连接串：此时端口 / 账号 / 密码由连接串决定 */
+  const isMongoUri =
+    conn.db_type === "mongodb" && /^mongodb(\+srv)?:\/\//i.test(conn.host.trim());
 
   /** 用于标题 / 文件名的库显示名：SQLite 取文件名（去掉扩展名） */
   const databaseDisplay = useMemo(() => {
@@ -776,17 +781,24 @@ function App() {
                     <input
                       type="number"
                       value={conn.port}
+                      disabled={isMongoUri}
                       onChange={(e) =>
                         setConn({ ...conn, port: Number(e.target.value) || conn.port })
                       }
                     />
                   </div>
                 </div>
+                {isMongoUri && (
+                  <div className="driver-tip ok">
+                    已识别为连接串：端口 / 账号 / 密码由连接串决定，下面三项不再使用
+                  </div>
+                )}
                 <div className="row">
                   <div className="field grow">
                     <label>用户</label>
                     <input
                       value={conn.user}
+                      disabled={isMongoUri}
                       onChange={(e) => setConn({ ...conn, user: e.target.value })}
                     />
                   </div>
@@ -796,6 +808,7 @@ function App() {
                       type="password"
                       value={conn.password}
                       placeholder="不保存"
+                      disabled={isMongoUri}
                       onChange={(e) => setConn({ ...conn, password: e.target.value })}
                     />
                   </div>

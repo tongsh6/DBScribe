@@ -1,9 +1,10 @@
 //! 数据库元数据读取层。
 //!
 //! 通过统一的 [`ConnectionOptions`] 调用，按 [`DbType`] 分发到具体实现。
-//! 支持 MySQL / MariaDB、PostgreSQL、SQLite、SQL Server 与 Oracle。
+//! 支持 MySQL / MariaDB、PostgreSQL、SQLite、SQL Server、Oracle、达梦 DM8 与 MongoDB。
 
 pub mod dameng;
+pub mod mongodb;
 pub mod mysql;
 pub mod odbc_util;
 pub mod options;
@@ -30,6 +31,7 @@ pub async fn list_databases(opts: &ConnectionOptions) -> Result<Vec<String>> {
         DbType::SqlServer => sqlserver::list_databases(opts).await,
         DbType::Oracle => oracle::list_databases(opts).await,
         DbType::Dameng => dameng::list_databases(opts).await,
+        DbType::MongoDb => mongodb::list_databases(opts).await,
     }
 }
 
@@ -42,6 +44,7 @@ pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
         DbType::SqlServer => sqlserver::load_tables(opts).await,
         DbType::Oracle => oracle::load_tables(opts).await,
         DbType::Dameng => dameng::load_tables(opts).await,
+        DbType::MongoDb => mongodb::load_tables(opts).await,
     }
 }
 
@@ -54,5 +57,6 @@ pub async fn load_table_columns(opts: &ConnectionOptions, table: &str) -> Result
         DbType::SqlServer => sqlserver::load_table_columns(opts, table).await,
         DbType::Oracle => oracle::load_table_columns(opts, table).await,
         DbType::Dameng => dameng::load_table_columns(opts, table).await,
+        DbType::MongoDb => mongodb::load_table_columns(opts, table).await,
     }
 }

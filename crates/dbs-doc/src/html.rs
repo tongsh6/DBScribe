@@ -3,7 +3,8 @@
 //! 输出自带样式与目录，可直接双击打开或托管成静态站点。
 
 use crate::common::{
-    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+    column_headers, column_values, display_indexes, table_note, ExportOptions, ExportReport,
+    ProgressFn,
 };
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -104,6 +105,9 @@ pub fn export_html(
             table.order,
             escape(&table.title())
         ));
+        if let Some(note) = table_note(table) {
+            html.push_str(&format!("<p class=\"meta\">{}</p>\n", escape(note)));
+        }
         write_table(&mut html, table, db_type);
         html.push_str("</div>\n");
     }

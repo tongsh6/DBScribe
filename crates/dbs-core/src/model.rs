@@ -17,6 +17,8 @@ pub enum DbType {
     Oracle,
     /// 达梦 DM8（通过 ODBC 访问）
     Dameng,
+    /// MongoDB（文档型：没有强制 schema，字段来自 validator 声明或采样推断）
+    MongoDb,
 }
 
 impl DbType {
@@ -29,14 +31,17 @@ impl DbType {
             DbType::Sqlite => "sqlite",
             DbType::Oracle => "oracle",
             DbType::Dameng => "dameng",
+            DbType::MongoDb => "mongodb",
         }
     }
 
     /// 是否在文档中输出「自增」列。
     ///
-    /// 五种数据库都支持某种形式的自增：MySQL `AUTO_INCREMENT`、PostgreSQL
+    /// 关系型数据库都支持某种形式的自增：MySQL `AUTO_INCREMENT`、PostgreSQL
     /// `serial`/`identity`、SQL Server `IDENTITY`、SQLite `INTEGER PRIMARY KEY`
     /// （rowid 别名）、Oracle 12c+ `GENERATED ... AS IDENTITY`。
+    ///
+    /// MongoDB 没有自增概念，不输出该列（版式与 Oracle 一致）。
     pub fn has_identity_column(&self) -> bool {
         matches!(
             self,
@@ -66,6 +71,7 @@ impl std::str::FromStr for DbType {
             "sqlite" | "sqlite3" => Ok(DbType::Sqlite),
             "oracle" => Ok(DbType::Oracle),
             "dameng" | "dm" | "dm8" => Ok(DbType::Dameng),
+            "mongodb" | "mongo" => Ok(DbType::MongoDb),
             other => Err(CoreError::UnsupportedDbType(other.to_string())),
         }
     }
@@ -205,6 +211,9 @@ pub struct TableInfo {
     pub schema: String,
     pub name: String,
     pub comment: String,
+    /// 文档备注：向读者解释这张表的额外信息（例如字段来源），不代表数据库里的表注释。
+    #[serde(default)]
+    pub note: String,
     pub columns: Vec<ColumnInfo>,
     /// 索引信息（含主键索引）。
     #[serde(default)]
@@ -301,12 +310,21 @@ mod tests {
             DbType::SqlServer,
             DbType::Sqlite,
             DbType::Oracle,
+            DbType::Dameng,
+            DbType::MongoDb,
         ] {
             assert_eq!(t.as_str().parse::<DbType>().unwrap(), t);
         }
         assert_eq!("mysql".parse::<DbType>().unwrap(), DbType::MySql);
         assert_eq!("PostgreSQL".parse::<DbType>().unwrap(), DbType::PostgreSql);
+        assert_eq!("mongo".parse::<DbType>().unwrap(), DbType::MongoDb);
         assert!("db2".parse::<DbType>().is_err());
+    }
+
+    #[test]
+    fn mongo_has_no_identity_column() {
+        // MongoDB 没有自增概念，文档不输出「自增」列
+        assert!(!DbType::MongoDb.has_identity_column());
     }
 
     #[test]

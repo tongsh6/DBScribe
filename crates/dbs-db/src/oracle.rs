@@ -260,6 +260,7 @@ fn load_tables_blocking(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
             indexes: indexes_by_table.remove(&name).unwrap_or_default(),
             foreign_keys: fks_by_table.remove(&name).unwrap_or_default(),
             is_partitioned: partitioned.contains(&name),
+            note: String::new(),
         });
     }
 

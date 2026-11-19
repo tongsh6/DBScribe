@@ -35,7 +35,7 @@ enum Command {
 /// 数据库连接参数（各子命令共用）。
 #[derive(Parser, Debug, Clone)]
 struct ConnectionArgs {
-    /// 数据库类型：mysql（默认）、postgres、sqlite、sqlserver、oracle
+    /// 数据库类型：mysql（默认）、postgres、sqlite、sqlserver、oracle、dameng、mongodb
     #[arg(long, default_value = "mysql")]
     driver: String,
 
@@ -62,14 +62,9 @@ impl ConnectionArgs {
     }
 
     fn default_port(&self, db_type: DbType) -> u16 {
-        self.port.unwrap_or(match db_type {
-            DbType::MySql => 3306,
-            DbType::PostgreSql => 5432,
-            DbType::SqlServer => 1433,
-            DbType::Oracle => 1521,
-            DbType::Sqlite => 0,
-            DbType::Dameng => 5236,
-        })
+        // 默认端口只在 ConnectionOptions 里定义一次，避免两处维护
+        self.port
+            .unwrap_or(ConnectionOptions::default_port(db_type))
     }
 
     fn to_options(&self, database: &str) -> Result<(DbType, ConnectionOptions)> {
@@ -114,6 +109,14 @@ struct ExportArgs {
     /// 跳过数据库中的分区表
     #[arg(long)]
     skip_partitioned: bool,
+
+    /// MongoDB 每个集合的采样条数（仅 --driver mongodb 生效）
+    #[arg(long)]
+    sample_size: Option<usize>,
+
+    /// MongoDB 只读取权威结构（validator / 索引），不采样推断字段
+    #[arg(long)]
+    no_infer_fields: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -184,7 +187,7 @@ async fn run_export(args: ExportArgs) -> Result<()> {
 
     let (db_type, opts) = args.conn.to_options(&args.database)?;
     tracing::info!("连接 {}", opts.describe());
-    let tables = load_tables(&opts).await?;
+    let tables = load_tables_for(&db_type, &opts, &args).await?;
     if tables.is_empty() {
         anyhow::bail!("数据库 {} 中没有任何基础表", args.database);
     }
@@ -236,6 +239,23 @@ async fn run_export(args: ExportArgs) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// MongoDB 支持采样参数，其余数据库沿用统一入口。
+async fn load_tables_for(
+    db_type: &DbType,
+    opts: &ConnectionOptions,
+    args: &ExportArgs,
+) -> Result<Vec<dbs_core::TableInfo>> {
+    if *db_type != DbType::MongoDb {
+        return load_tables(opts).await;
+    }
+    let mut config = dbs_db::mongodb::SampleConfig::default();
+    if let Some(size) = args.sample_size {
+        config.sample_size = size;
+    }
+    config.infer_fields = !args.no_infer_fields;
+    dbs_db::mongodb::load_tables_with(opts, &config).await
 }
 
 /// 解析输出格式：显式 `--format` 优先，其次按 `--out` 扩展名推断，最后兜底 Excel。

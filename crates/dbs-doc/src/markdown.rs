@@ -3,7 +3,8 @@
 //! 单文件输出：标题 → 元信息 → 目录（锚点跳转）→ 每张表一个小节。
 
 use crate::common::{
-    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+    column_headers, column_values, display_indexes, table_note, ExportOptions, ExportReport,
+    ProgressFn,
 };
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -102,6 +103,9 @@ fn er_ident(name: &str) -> String {
 
 fn write_table(md: &mut String, table: &TableInfo, db_type: DbType) {
     md.push_str(&format!("## {}\n\n", escape_inline(&table.title())));
+    if let Some(note) = table_note(table) {
+        md.push_str(&format!("> {}\n\n", escape_inline(note)));
+    }
 
     let headers = column_headers(db_type);
     md.push_str("| ");
@@ -253,6 +257,22 @@ mod tests {
     fn escape_pipe_in_cells() {
         assert_eq!(escape_cell("a|b"), "a\\|b");
         assert_eq!(escape_inline("a\nb"), "a b");
+    }
+
+    #[test]
+    fn table_note_is_rendered_only_when_present() {
+        let mut with_note = table();
+        with_note.note = "字段来源：200 条采样推断".into();
+        let mut md = String::new();
+        write_table(&mut md, &with_note, DbType::MySql);
+        assert!(
+            md.contains("> 字段来源：200 条采样推断"),
+            "备注未输出：{md}"
+        );
+
+        let mut plain = String::new();
+        write_table(&mut plain, &table(), DbType::MySql);
+        assert!(!plain.contains("> \n"), "空备注不应产生引用块：{plain}");
     }
 
     #[test]

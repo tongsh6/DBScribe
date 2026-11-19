@@ -293,6 +293,7 @@ pub async fn load_tables(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
             indexes: indexes_by_table.remove(&key).unwrap_or_default(),
             foreign_keys: fks_by_table.remove(&key).unwrap_or_default(),
             is_partitioned: partitioned.contains(&key),
+            note: String::new(),
         });
     }
 

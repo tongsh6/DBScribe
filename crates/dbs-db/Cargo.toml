@@ -17,6 +17,7 @@ rusqlite = { version = "0.41.1", features = ["bundled"] }
 tiberius = { version = "0.13.0", default-features = false, features = ["rustls", "tds73"] }
 tokio-util = { version = "0.7.20", features = ["compat"] }
 oracle = "0.6.3"
+mongodb = "3"
 ureq = "3.5.1"
 zip = "9.5.0"
 

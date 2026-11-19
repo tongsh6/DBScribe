@@ -20,6 +20,7 @@ Windows / macOS / Linux 共用一套 Rust 代码，产物是单个可执行文�
 | Oracle | ✅ 可用（首次连接时自动下载客户端，约 60MB） |
 | OceanBase | ✅ 可用（MySQL 兼容协议，`--driver oceanbase`） |
 | 达梦 DM8 | ✅ 可用（Windows / Linux）：需先安装 DM ODBC 驱动，应用内会检测并给出安装指引；macOS 官方无驱动，不支持 |
+| MongoDB | ✅ 可用：字段来自 collection validator（有声明时优先）或采样推断，文档会标注来源；已在 MongoDB 7.0 实例上完成集成验证 |
 | Excel 导出（单 Sheet / 每表一个 Sheet） | ✅ 可用 |
 | Markdown / HTML / JSON / XML 导出 | ✅ 可用 |
 | 图形界面（Tauri 桌面应用） | ✅ 可用 |
@@ -94,7 +95,7 @@ dbs export \
 
 | 参数 | 说明 |
 | --- | --- |
-| `--driver` | 数据库类型：`mysql`（默认）/ `postgres` / `sqlite` / `sqlserver` / `oracle` |
+| `--driver` | 数据库类型：`mysql`（默认）/ `postgres` / `sqlite` / `sqlserver` / `oracle` / `oceanbase` / `dameng` / `mongodb` |
 | `--host` / `--port` | 连接地址；端口缺省按类型取（mysql=3306，postgres=5432，sqlserver=1433，oracle=1521）；sqlite 不需要 |
 | `--user` / `--password` | 账号；密码也可用环境变量 `DBS_PASSWORD` |
 | `--database` | 要导出的库名 |
@@ -157,7 +158,7 @@ legacy-dotnet/  早期 .NET 实现归档，仅作版式参照，不参与构建
 
 围绕「把数据库文档这件事做到最好」：
 
-1. **多数据库支持**：MySQL ✅ → PostgreSQL ✅ → SQLite ✅ → SQL Server ✅ → Oracle ✅
+1. **多数据库支持**：MySQL ✅ → PostgreSQL ✅ → SQLite ✅ → SQL Server ✅ → Oracle ✅ → 达梦 ✅ → MongoDB ✅
 2. **文档质量**：索引信息、外键关系、ER 关系图
 3. **交付体验**：文档模板、一次导出多个库
 4. **CI 集成**：文档随代码自动更新

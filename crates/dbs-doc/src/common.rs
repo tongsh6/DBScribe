@@ -56,6 +56,16 @@ pub fn column_values(column: &ColumnInfo, db_type: DbType) -> Vec<String> {
     values
 }
 
+/// 表级备注（如 MongoDB 的字段来源说明）；空白字符串视为没有备注。
+pub fn table_note(table: &TableInfo) -> Option<&str> {
+    let note = table.note.trim();
+    if note.is_empty() {
+        None
+    } else {
+        Some(note)
+    }
+}
+
 /// 导出参数（所有格式共用）。
 #[derive(Debug, Clone)]
 pub struct ExportOptions {

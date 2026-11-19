@@ -248,7 +248,8 @@ pub async fn export_document(
     let options = ExportOptions::new(
         title,
         mode,
-        DatabaseInfo::new(DbType::MySql, params.database.clone()),
+        // 用连接解析出的真实类型：写死 MySql 会吞掉 Oracle / MongoDB 的版式差异
+        DatabaseInfo::new(opts.db_type, params.database.clone()),
         format,
     );
 

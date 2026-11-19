@@ -44,6 +44,9 @@ pub fn export_xml(
             table.is_partitioned
         );
         let _ = writeln!(xml, "      <comment>{}</comment>", escape(&table.comment));
+        if !table.note.trim().is_empty() {
+            let _ = writeln!(xml, "      <note>{}</note>", escape(&table.note));
+        }
         xml.push_str("      <columns>\n");
         for column in &table.columns {
             let _ = writeln!(

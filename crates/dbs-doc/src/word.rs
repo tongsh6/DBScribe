@@ -4,7 +4,8 @@
 //! 辅助信息用更小的字号，保持「小而美」的层级感。
 
 use crate::common::{
-    column_headers, column_values, display_indexes, ExportOptions, ExportReport, ProgressFn,
+    column_headers, column_values, display_indexes, table_note, ExportOptions, ExportReport,
+    ProgressFn,
 };
 use anyhow::{Context, Result};
 use chrono::Local;
@@ -48,6 +49,9 @@ pub fn export_word(
         doc = doc.add_paragraph(
             Paragraph::new().add_run(Run::new().add_text(table.title()).bold().size(28)),
         );
+        if let Some(note) = table_note(table) {
+            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(note).size(18)));
+        }
 
         // 列结构表
         let db_type = opts.database.db_type;

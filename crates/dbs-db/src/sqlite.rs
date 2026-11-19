@@ -68,6 +68,7 @@ fn load_tables_blocking(path: &str) -> Result<Vec<TableInfo>> {
             indexes,
             foreign_keys,
             is_partitioned: false,
+            note: String::new(),
         });
     }
 

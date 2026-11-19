@@ -31,6 +31,8 @@ struct JsonTable<'a> {
     schema: &'a str,
     name: &'a str,
     comment: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    note: &'a str,
     is_partitioned: bool,
     columns: Vec<JsonColumn<'a>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -92,6 +94,7 @@ pub fn export_json(
                 schema: &t.schema,
                 name: &t.name,
                 comment: &t.comment,
+                note: &t.note,
                 is_partitioned: t.is_partitioned,
                 columns: t
                     .columns
