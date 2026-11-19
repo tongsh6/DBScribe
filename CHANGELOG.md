@@ -6,6 +6,12 @@
 > 发布时由 `git-cliff` 依据 [cliff.toml](cliff.toml) 从 Conventional Commits 自动生成
 > 对应 tag 的 Release Notes；本文件汇总历次版本。
 
+## [0.5.1] - 2026-11-19
+
+### 问题修复
+
+- **desktop**：「连接管理」对话框的数据库类型下拉与主界面不一致，缺 MongoDB / SQLite / Oracle，导致这些类型无法在连接管理中新增；两处列表合并为共享的 `src/dbTypes.ts`
+
 ## [0.5.0] - 2026-11-19
 
 MongoDB 支持：把「声明优先、采样兜底、来源标注」的结构文档能力扩展到文档型数据库。
