@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { SavedConnection } from "../types";
-import { DB_TYPES } from "../dbTypes";
+import { DB_TYPES, dbTypeSpec, isConnectionString } from "../dbTypes";
 
 interface Props {
   open: boolean;
@@ -21,9 +22,18 @@ interface Draft {
   host: string;
   port: number;
   user: string;
+  database: string;
 }
 
-const EMPTY: Draft = { id: "", db_type: "mysql", name: "", host: "127.0.0.1", port: 3306, user: "root" };
+const EMPTY: Draft = {
+  id: "",
+  db_type: "mysql",
+  name: "",
+  host: "127.0.0.1",
+  port: 3306,
+  user: "root",
+  database: "",
+};
 
 function errText(err: unknown): string {
   if (typeof err === "string") return err;
@@ -46,6 +56,8 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
 
   if (!open) return null;
 
+  const draftSpec = draft ? dbTypeSpec(draft.db_type) : null;
+
   const startAdd = () => {
     setError("");
     setDraft({ ...EMPTY });
@@ -53,14 +65,21 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
 
   const startEdit = (conn: SavedConnection) => {
     setError("");
-    setDraft({ ...conn });
+    setDraft({ ...conn, database: conn.database ?? "" });
   };
 
   const submit = async () => {
     if (!draft) return;
-    const name = draft.name.trim() || `${draft.user}@${draft.host}`;
-    if (!draft.host.trim()) {
+    const spec = dbTypeSpec(draft.db_type);
+    const name =
+      draft.name.trim() ||
+      (spec.network ? `${draft.user}@${draft.host}` : draft.database.trim());
+    if (spec.network && !draft.host.trim()) {
       setError("主机不能为空");
+      return;
+    }
+    if (!spec.network && !draft.database.trim()) {
+      setError("请选择或输入数据库文件路径");
       return;
     }
     setBusy(true);
@@ -74,6 +93,7 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
           host: draft.host.trim(),
           port: draft.port,
           user: draft.user.trim(),
+          database: draft.database.trim(),
         },
       });
       await onRefresh();
@@ -131,7 +151,9 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
                     {c.id === activeId && <span className="tag">当前</span>}
                   </td>
                   <td className="mono">
-                    {c.host}:{c.port}
+                    {dbTypeSpec(c.db_type).network
+                      ? `${c.host}:${c.port}`
+                      : c.database || "—"}
                   </td>
                   <td className="mono">{c.user}</td>
                   <td>
@@ -191,29 +213,70 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
                 ))}
               </select>
             </div>
-            <div className="row">
-              <div className="field grow">
-                <label>主机</label>
-                <input
-                  value={draft.host}
-                  onChange={(e) => setDraft({ ...draft, host: e.target.value })}
-                />
-              </div>
-              <div className="field" style={{ width: 110 }}>
-                <label>端口</label>
-                <input
-                  type="number"
-                  value={draft.port}
-                  onChange={(e) => setDraft({ ...draft, port: Number(e.target.value) || 3306 })}
-                />
-              </div>
-            </div>
+            {draftSpec?.network && (
+              <>
+                <div className="row">
+                  <div className="field grow">
+                    <label>主机</label>
+                    <input
+                      value={draft.host}
+                      placeholder={draftSpec.hostPlaceholder}
+                      onChange={(e) => setDraft({ ...draft, host: e.target.value })}
+                    />
+                  </div>
+                  <div className="field" style={{ width: 110 }}>
+                    <label>端口</label>
+                    <input
+                      type="number"
+                      value={draft.port}
+                      disabled={draftSpec.value === "mongodb" && isConnectionString(draft.host)}
+                      onChange={(e) =>
+                        setDraft({ ...draft, port: Number(e.target.value) || draft.port })
+                      }
+                    />
+                  </div>
+                </div>
+                {draftSpec.value === "mongodb" && isConnectionString(draft.host) && (
+                  <div className="driver-tip ok">
+                    已识别为连接串：端口 / 账号由连接串决定
+                  </div>
+                )}
+                <div className="field">
+                  <label>用户</label>
+                  <input
+                    value={draft.user}
+                    onChange={(e) => setDraft({ ...draft, user: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
             <div className="field">
-              <label>用户</label>
-              <input
-                value={draft.user}
-                onChange={(e) => setDraft({ ...draft, user: e.target.value })}
-              />
+              <label>{draftSpec?.databaseLabel ?? "数据库"}</label>
+              <div className="row">
+                <input
+                  value={draft.database}
+                  placeholder={draftSpec?.databaseFile ? "选择或输入 .db 文件路径" : "可选"}
+                  onChange={(e) => setDraft({ ...draft, database: e.target.value })}
+                />
+                {draftSpec?.databaseFile && (
+                  <button
+                    onClick={async () => {
+                      const file = await openDialog({
+                        multiple: false,
+                        directory: false,
+                        filters: [
+                          { name: "SQLite 数据库", extensions: ["db", "sqlite", "sqlite3"] },
+                        ],
+                      });
+                      if (typeof file === "string") {
+                        setDraft((prev) => (prev ? { ...prev, database: file } : prev));
+                      }
+                    }}
+                  >
+                    浏览…
+                  </button>
+                )}
+              </div>
             </div>
             <div className="row">
               <button className="primary" disabled={busy} onClick={submit}>

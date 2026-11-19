@@ -17,6 +17,8 @@ export interface SavedConnection {
   host: string;
   port: number;
   user: string;
+  /** 库名 / SQLite 文件路径 / Oracle 服务名；旧配置为空 */
+  database: string;
   /** 是否已在系统凭据存储中保存了密码 */
   has_password: boolean;
 }

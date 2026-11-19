@@ -79,6 +79,9 @@ pub struct SavedConnection {
     pub host: String,
     pub port: u16,
     pub user: String,
+    /// 库名 / SQLite 文件路径 / Oracle 服务名；旧配置没有该字段时为空
+    #[serde(default)]
+    pub database: String,
     /// 是否已在系统凭据存储中保存了密码
     #[serde(default)]
     pub has_password: bool,

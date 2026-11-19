@@ -11,7 +11,7 @@ import { ToastStack } from "./components/ToastStack";
 import { TableDetail } from "./components/TableDetail";
 import { createNotice, type Notice, type NoticeKind } from "./notifications";
 import { explainError } from "./errors";
-import { DB_TYPES } from "./dbTypes";
+import { DB_TYPES, dbTypeSpec, isConnectionString } from "./dbTypes";
 import type {
   AppState,
   ColumnView,
@@ -258,6 +258,7 @@ function App() {
           host: conn.host,
           port: conn.port,
           user: conn.user,
+          database,
         },
         // 记住密码：交给系统凭据管理器保存
         password: rememberPassword && conn.password ? conn.password : null,
@@ -266,7 +267,7 @@ function App() {
     } catch {
       /* 记住连接失败不影响主流程 */
     }
-  }, [remember, rememberPassword, activeConnection, conn, refreshState]);
+  }, [remember, rememberPassword, activeConnection, conn, database, refreshState]);
 
   const testConnection = useCallback(async () => {
     setBusy("connect");
@@ -338,15 +339,15 @@ function App() {
     [loadTables],
   );
 
-  const isSqlite = conn.db_type === "sqlite";
+  const dbSpec = dbTypeSpec(conn.db_type);
+  const isSqlite = !dbSpec.network;
 
   /** MongoDB 的 host 可以是完整连接串：此时端口 / 账号 / 密码由连接串决定 */
-  const isMongoUri =
-    conn.db_type === "mongodb" && /^mongodb(\+srv)?:\/\//i.test(conn.host.trim());
+  const isMongoUri = dbSpec.value === "mongodb" && isConnectionString(conn.host);
 
   /** 用于标题 / 文件名的库显示名：SQLite 取文件名（去掉扩展名） */
   const databaseDisplay = useMemo(() => {
-    if (conn.db_type === "sqlite" && database) {
+    if (!dbTypeSpec(conn.db_type).network && database) {
       const base = database.split(/[\\/]/).pop() ?? database;
       return base.replace(/\.(db|sqlite|sqlite3)$/i, "");
     }
@@ -736,7 +737,7 @@ function App() {
             )}
             {conn.db_type === "oracle" && (
               <div className="field">
-                <label>服务名（service name）</label>
+                <label>{dbSpec.databaseLabel ?? "数据库"}</label>
                 <input
                   value={database}
                   placeholder="XE"
@@ -746,7 +747,7 @@ function App() {
             )}
             {isSqlite ? (
               <div className="field">
-                <label>数据库文件</label>
+                <label>{dbSpec.databaseLabel ?? "数据库文件"}</label>
                 <div className="row">
                   <input
                     value={database}
@@ -763,6 +764,7 @@ function App() {
                     <label>主机</label>
                     <input
                       value={conn.host}
+                      placeholder={dbSpec.hostPlaceholder}
                       onChange={(e) => setConn({ ...conn, host: e.target.value })}
                     />
                   </div>
