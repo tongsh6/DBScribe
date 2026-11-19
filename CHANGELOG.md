@@ -6,6 +6,18 @@
 > 发布时由 `git-cliff` 依据 [cliff.toml](cliff.toml) 从 Conventional Commits 自动生成
 > 对应 tag 的 Release Notes；本文件汇总历次版本。
 
+## [0.5.2] - 2026-11-19
+
+### 问题修复
+
+- **desktop**：切换数据库类型时默认用户名跟随类型变化，MongoDB / SQLite 默认留空；此前默认带 `root`，在无认证的 MongoDB 上会报 `SCRAM failure: AuthenticationFailed`
+- **doc**：Excel 索引区改用合并列（名称 A:B、列 C:H、唯一 I），长索引名不再被截断、长列定义不再溢出
+- **db**：MongoDB 索引的 partial 过滤条件简化为 `(partial)` 标记，避免导出单元格内容过长
+
+### 变更
+
+- **desktop**：连接表单按数据库类型 schema 渲染，连接管理补齐数据库字段（SQLite 文件、Oracle 服务名、MongoDB 连接串提示）
+
 ## [0.5.1] - 2026-11-19
 
 ### 问题修复
