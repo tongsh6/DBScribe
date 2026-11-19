@@ -11,6 +11,7 @@ import { ToastStack } from "./components/ToastStack";
 import { TableDetail } from "./components/TableDetail";
 import { createNotice, type Notice, type NoticeKind } from "./notifications";
 import { explainError } from "./errors";
+import { DB_TYPES } from "./dbTypes";
 import type {
   AppState,
   ColumnView,
@@ -21,17 +22,6 @@ import type {
   TableSummary,
 } from "./types";
 import "./App.css";
-
-const DB_TYPES = [
-  { value: "mysql", label: "MySQL / MariaDB", port: 3306 },
-  { value: "postgres", label: "PostgreSQL", port: 5432 },
-  { value: "sqlite", label: "SQLite（本地文件）", port: 0 },
-  { value: "sqlserver", label: "SQL Server", port: 1433 },
-  { value: "oracle", label: "Oracle", port: 1521 },
-  { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881 },
-  { value: "dameng", label: "达梦 DM8（需 ODBC 驱动）", port: 5236 },
-  { value: "mongodb", label: "MongoDB（host 可填连接串）", port: 27017 },
-];
 
 const FORMATS = [
   { value: "excel", label: "Excel (.xlsx)", ext: "xlsx" },
