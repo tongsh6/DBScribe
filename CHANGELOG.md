@@ -6,6 +6,34 @@
 > 发布时由 `git-cliff` 依据 [cliff.toml](cliff.toml) 从 Conventional Commits 自动生成
 > 对应 tag 的 Release Notes；本文件汇总历次版本。
 
+## [0.5.0] - 2026-11-19
+
+MongoDB 支持：把「声明优先、采样兜底、来源标注」的结构文档能力扩展到文档型数据库。
+
+### 新功能
+
+- **db**：支持 **MongoDB**（`--driver mongodb`，host 可直接写 `mongodb://` 连接串）
+- **db**：读取 collection validator（`$jsonSchema`）作为字段声明，字段结构可复现
+- **db**：没有 validator 时用 `$sample` 采样推断字段，并标注样本数与集合总量
+- **db**：索引导出 TTL / sparse / hidden / partial / 全文索引
+- **doc**：表级来源标注（validator 声明 / 采样推断）覆盖 Excel / Markdown / HTML / JSON / XML / Word
+- **cli**：新增 `--sample-size`、`--no-infer-fields`
+- **desktop**：新增 MongoDB 类型；host 填连接串时端口 / 账号 / 密码自动置灰
+
+### 问题修复
+
+- **desktop**：导出时 `db_type` 被写死为 MySQL，导致 Oracle / 达梦的版式差异失效
+- **cli**：默认端口表与驱动层重复维护，收敛为一处
+
+### 安全
+
+- **desktop**：连接串里的密码在保存时移入系统凭据管理器，配置文件不再出现明文
+
+### 测试
+
+- 65 个单元测试；MongoDB 7.0 集成测试覆盖声明+采样混合、空集合、自定义 `_id`、权威模式
+- CI 新增 Ubuntu + `mongo:7` service 的集成测试 job
+
 ## [0.4.0] - 2026-11-10
 
 数据库覆盖与文档质量的完整跃升：补齐 PostgreSQL / SQLite / SQL Server / Oracle / OceanBase / 达梦，
