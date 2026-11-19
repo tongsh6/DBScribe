@@ -52,10 +52,11 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy（零告警）
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        # 桌面端依赖 GUI 库，由 desktop.yml 单独检查
+        run: cargo clippy --workspace --exclude dbs-desktop --all-targets -- -D warnings
 
       - name: 单元测试
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude dbs-desktop
 
   # MongoDB 集成测试：只在 ubuntu 上跑，用 service container 提供实例
   mongodb:

@@ -1,10 +1,10 @@
 [package]
 name = "dbs-desktop"
-version = "0.5.2"
+version.workspace = true
 description = "DBScribe 桌面版：跨平台数据库结构文档工具"
-edition = "2021"
-license = "Apache-2.0"
-repository = "https://github.com/tongsh6/DBScribe"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 # 需要 unique 的 lib 名，避免与 bin 名冲突（Windows）
@@ -28,9 +28,4 @@ dbs-db = { path = "../../../crates/dbs-db" }
 dbs-doc = { path = "../../../crates/dbs-doc" }
 keyring = "4.2.0"
 
-[profile.release]
-codegen-units = 1
-lto = true
-opt-level = 3
-panic = "abort"
-strip = true
+# 构建特性统一由根 Cargo.toml 的 [profile.release] 决定

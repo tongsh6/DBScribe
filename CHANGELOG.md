@@ -6,6 +6,17 @@
 > 发布时由 `git-cliff` 依据 [cliff.toml](cliff.toml) 从 Conventional Commits 自动生成
 > 对应 tag 的 Release Notes；本文件汇总历次版本。
 
+## [0.5.3] - 2026-11-19
+
+### 变更
+
+- **版本号收敛到单一来源**：桌面端纳入 Cargo workspace，版本只在根 `Cargo.toml` 的 `workspace.package` 声明；`tauri.conf.json` 与 `package.json` 不再保存版本，安装包名称直接从 Cargo 版本派生
+- 主 CI 用 `--exclude dbs-desktop` 隔离桌面端的 GUI 依赖，桌面端由 desktop.yml 单独检查
+
+### 问题修复
+
+- **release**：修复 v0.5.1 / v0.5.2 桌面安装包仍命名为 0.5.0 的问题；Release 流程新增 tag 与版本号的一致性校验
+
 ## [0.5.2] - 2026-11-19
 
 ### 问题修复

@@ -34,6 +34,21 @@ jobs:
           # git-cliff 需要完整提交历史来生成变更记录
           fetch-depth: 0
 
+      - name: 校验版本号与 tag 一致
+        shell: bash
+        # 版本号只在根 Cargo.toml 的 workspace.package 声明；0.5.1/0.5.2 曾因多处副本漏同步
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          if ! grep -Eq "^version = \"$tag\"$" Cargo.toml; then
+            echo "::error::根 Cargo.toml 的 workspace 版本不是 $tag"
+            exit 1
+          fi
+          if grep -Eq '"version"' apps/desktop/src-tauri/tauri.conf.json; then
+            echo "::error::tauri.conf.json 不应再声明 version，应从 Cargo.toml 继承"
+            exit 1
+          fi
+          echo "版本 $tag 一致，且版本只在一处声明"
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
 
