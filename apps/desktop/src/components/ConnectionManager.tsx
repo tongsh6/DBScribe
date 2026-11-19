@@ -198,11 +198,16 @@ export function ConnectionManager({ open, connections, activeId, onClose, onRefr
               <select
                 value={draft.db_type}
                 onChange={(e) => {
-                  const next = DB_TYPES.find((d) => d.value === e.target.value);
+                  const next = dbTypeSpec(e.target.value);
+                  const prev = dbTypeSpec(draft.db_type);
                   setDraft({
                     ...draft,
                     db_type: e.target.value,
-                    port: next?.port ?? draft.port,
+                    port: next.port,
+                    user:
+                      draft.user === prev.defaultUser
+                        ? (next.defaultUser ?? draft.user)
+                        : draft.user,
                   });
                 }}
               >

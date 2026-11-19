@@ -12,10 +12,12 @@ export interface DbTypeSpec {
   databaseFile?: boolean;
   /** host 输入框的提示。 */
   hostPlaceholder?: string;
+  /** 切换类型时建议的默认用户名；空字符串表示该类型默认无认证。 */
+  defaultUser?: string;
 }
 
 export const DB_TYPES: DbTypeSpec[] = [
-  { value: "mysql", label: "MySQL / MariaDB", port: 3306, network: true },
+  { value: "mysql", label: "MySQL / MariaDB", port: 3306, network: true, defaultUser: "root" },
   { value: "postgres", label: "PostgreSQL", port: 5432, network: true },
   {
     value: "sqlite",
@@ -24,6 +26,7 @@ export const DB_TYPES: DbTypeSpec[] = [
     network: false,
     databaseLabel: "数据库文件",
     databaseFile: true,
+    defaultUser: "",
   },
   { value: "sqlserver", label: "SQL Server", port: 1433, network: true },
   {
@@ -33,7 +36,13 @@ export const DB_TYPES: DbTypeSpec[] = [
     network: true,
     databaseLabel: "服务名（service name）",
   },
-  { value: "oceanbase", label: "OceanBase（MySQL 兼容）", port: 2881, network: true },
+  {
+    value: "oceanbase",
+    label: "OceanBase（MySQL 兼容）",
+    port: 2881,
+    network: true,
+    defaultUser: "root",
+  },
   { value: "dameng", label: "达梦 DM8（需 ODBC 驱动）", port: 5236, network: true },
   {
     value: "mongodb",
@@ -41,10 +50,17 @@ export const DB_TYPES: DbTypeSpec[] = [
     port: 27017,
     network: true,
     hostPlaceholder: "主机，或完整连接串 mongodb://…",
+    defaultUser: "",
   },
 ];
 
-const DEFAULT_SPEC: DbTypeSpec = { value: "mysql", label: "MySQL", port: 3306, network: true };
+const DEFAULT_SPEC: DbTypeSpec = {
+  value: "mysql",
+  label: "MySQL",
+  port: 3306,
+  network: true,
+  defaultUser: "root",
+};
 
 /** 按值取类型描述；未知值回退到 MySQL（与后端默认一致）。 */
 export function dbTypeSpec(value: string): DbTypeSpec {

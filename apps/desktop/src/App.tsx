@@ -692,11 +692,15 @@ function App() {
               <select
                 value={conn.db_type}
                 onChange={(e) => {
-                  const next = DB_TYPES.find((d) => d.value === e.target.value);
+                  const next = dbTypeSpec(e.target.value);
+                  const prev = dbTypeSpec(conn.db_type);
                   setConn({
                     ...conn,
                     db_type: e.target.value,
-                    port: next?.port ?? conn.port,
+                    port: next.port,
+                    // 默认用户名只在未被改动时跟随类型切换（MongoDB / SQLite 默认无认证）
+                    user:
+                      conn.user === prev.defaultUser ? (next.defaultUser ?? conn.user) : conn.user,
                   });
                   setDatabases([]);
                   setDatabase("");
