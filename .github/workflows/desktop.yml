@@ -59,6 +59,15 @@ jobs:
         working-directory: apps/desktop
         run: pnpm lint
 
+      - name: 数据库类型单一定义检查
+        working-directory: apps/desktop
+        # 0.5.0 的教训：列表在组件里各有一份，只改一处导致用户看不到 MongoDB
+        run: |
+          if grep -rnE '^(const|let|var) DB_TYPES' src --include='*.ts' --include='*.tsx'; then
+            echo "::error::DB_TYPES 必须在 src/dbTypes.ts 单一定义，禁止在组件内复制"
+            exit 1
+          fi
+
       - name: 前端类型检查与构建
         working-directory: apps/desktop
         run: pnpm build
