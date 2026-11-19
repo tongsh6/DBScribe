@@ -4,10 +4,13 @@
 //! `all_constraints` / `all_indexes`…），因此 SQL 与 [`crate::oracle`] 基本一致，
 //! 差异只在于：传输层走 ODBC、参数直接内联（ODBC 占位符风格不同）。
 
+#[cfg(not(target_os = "macos"))]
 use crate::odbc_util;
 use crate::options::ConnectionOptions;
 use anyhow::{Context, Result};
-use dbs_core::{ColumnInfo, ForeignKey, IndexInfo, TableInfo};
+use dbs_core::{ColumnInfo, TableInfo};
+#[cfg(not(target_os = "macos"))]
+use dbs_core::{ForeignKey, IndexInfo};
 
 #[cfg(not(target_os = "macos"))]
 use odbc_api::{
@@ -15,6 +18,7 @@ use odbc_api::{
 };
 
 /// 达梦数据字典查询（与 Oracle 版一致，只是当前用户/模式用字面量内联）。
+#[cfg(not(target_os = "macos"))]
 const TABLE_SQL: &str = r#"
 SELECT t.table_name, NVL(c.comments, ' ')
 FROM all_tables t
@@ -24,6 +28,7 @@ WHERE t.owner = '{OWNER}'
 ORDER BY t.table_name
 "#;
 
+#[cfg(not(target_os = "macos"))]
 const COLUMN_SQL: &str = r#"
 SELECT c.table_name,
        c.column_id,
@@ -55,6 +60,7 @@ WHERE c.owner = '{OWNER}'
 ORDER BY c.table_name, c.column_id
 "#;
 
+#[cfg(not(target_os = "macos"))]
 const INDEX_SQL: &str = r#"
 SELECT i.table_name, i.index_name, i.uniqueness, ic.column_name
 FROM all_indexes i
@@ -64,6 +70,7 @@ WHERE i.table_owner = '{OWNER}'
 ORDER BY i.table_name, i.index_name, ic.column_position
 "#;
 
+#[cfg(not(target_os = "macos"))]
 const PK_INDEX_SQL: &str = r#"
 SELECT cc.table_name, c.index_name
 FROM all_constraints c
@@ -72,6 +79,7 @@ JOIN all_cons_columns cc
 WHERE c.constraint_type = 'P' AND c.owner = '{OWNER}'
 "#;
 
+#[cfg(not(target_os = "macos"))]
 const FK_SQL: &str = r#"
 SELECT c.table_name, c.constraint_name, cc.column_name,
        r.table_name AS ref_table, rcc.column_name AS ref_column
@@ -87,6 +95,7 @@ WHERE c.constraint_type = 'R' AND c.owner = '{OWNER}'
 ORDER BY c.table_name, c.constraint_name, cc.position
 "#;
 
+#[cfg(not(target_os = "macos"))]
 const PARTITION_SQL: &str = r#"
 SELECT table_name FROM all_tables WHERE owner = '{OWNER}' AND partitioned = 'YES'
 "#;
@@ -310,6 +319,7 @@ fn load_tables_blocking(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
 }
 
 /// 与 Oracle 一致的类型长度格式化。
+#[cfg(not(target_os = "macos"))]
 fn format_length(
     data_type: &str,
     data_length: Option<i64>,
@@ -334,6 +344,7 @@ fn format_length(
 mod tests {
     use super::*;
 
+    #[cfg(not(target_os = "macos"))]
     #[test]
     fn format_length_variants() {
         assert_eq!(format_length("VARCHAR2", Some(64), None, None), "64");
