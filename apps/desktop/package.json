@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
+    "test": "node --experimental-strip-types --test tests/er.test.ts",
     "preview": "vite preview",
     "tauri": "tauri"
   },

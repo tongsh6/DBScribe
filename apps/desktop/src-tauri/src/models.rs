@@ -21,6 +21,8 @@ fn default_db_type() -> String {
 /// 表摘要（用于列表展示，不携带列定义）。
 #[derive(Debug, Clone, Serialize)]
 pub struct TableSummary {
+    /// schema / owner；MySQL 为库名，SQLite 为 main，其他方言为 owner。
+    pub schema: String,
     pub name: String,
     pub comment: String,
     pub column_count: usize,
@@ -36,9 +38,9 @@ pub struct ExportParams {
     /// multi / single
     pub sheet_mode: String,
     pub out_path: String,
-    /// 只导出这些表；`None` 或空表示导出全部
+    /// 只导出这些表；`None` 或空表示导出全部。兼容旧版纯表名。
     #[serde(default)]
-    pub tables: Option<Vec<String>>,
+    pub tables: Option<Vec<crate::er::TableRefInput>>,
 }
 
 /// 导出进度事件负载。

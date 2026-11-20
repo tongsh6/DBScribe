@@ -1,16 +1,26 @@
 import { useState } from "react";
+import { tableLabel } from "../er";
 import type { ColumnView, TableSummary } from "../types";
 
 interface Props {
   open: boolean;
   table: TableSummary | null;
+  database?: string;
   columns: ColumnView[] | null;
   loading: boolean;
   error: string;
   onClose: () => void;
 }
 
-export function TableDetail({ open, table, columns, loading, error, onClose }: Props) {
+export function TableDetail({
+  open,
+  table,
+  database,
+  columns,
+  loading,
+  error,
+  onClose,
+}: Props) {
   const [copied, setCopied] = useState<string | null>(null);
 
   if (!open || !table) return null;
@@ -30,7 +40,7 @@ export function TableDetail({ open, table, columns, loading, error, onClose }: P
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <h3 className="mono">{table.name}</h3>
+            <h3 className="mono">{tableLabel(table, database)}</h3>
             <p className="muted">{table.comment || "（无注释）"}</p>
           </div>
           <button className="small" onClick={onClose}>

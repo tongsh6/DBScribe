@@ -8,6 +8,7 @@ use crate::options::ConnectionOptions;
 use anyhow::{Context, Result};
 use dbs_core::{ColumnInfo, ForeignKey, IndexInfo, TableInfo};
 use rusqlite::Connection;
+pub(crate) mod er;
 
 /// SQLite 只有一个「库」，就是文件本身。
 pub async fn list_databases(opts: &ConnectionOptions) -> Result<Vec<String>> {
@@ -42,6 +43,10 @@ fn load_tables_blocking(path: &str) -> Result<Vec<TableInfo>> {
     let conn = Connection::open(path)
         .with_context(|| format!("打开 SQLite 文件失败：{path}（文件不存在或不是数据库）"))?;
 
+    load_tables_from(&conn)
+}
+
+fn load_tables_from(conn: &Connection) -> Result<Vec<TableInfo>> {
     let mut stmt = conn.prepare(
         "SELECT name FROM sqlite_master \
          WHERE type = 'table' AND name NOT LIKE 'sqlite_%' \
@@ -53,10 +58,10 @@ fn load_tables_blocking(path: &str) -> Result<Vec<TableInfo>> {
 
     let mut tables = Vec::with_capacity(names.len());
     for (idx, name) in names.iter().enumerate() {
-        let columns = load_columns_blocking(&conn, name)
+        let columns = load_columns_blocking(conn, name)
             .with_context(|| format!("读取表 {name} 的列信息失败"))?;
-        let indexes = load_indexes_blocking(&conn, name)?;
-        let foreign_keys = load_foreign_keys_blocking(&conn, name)?;
+        let indexes = load_indexes_blocking(conn, name)?;
+        let foreign_keys = load_foreign_keys_blocking(conn, name)?;
         tables.push(TableInfo {
             order: (idx + 1) as u32,
             // SQLite 单文件单 schema
@@ -89,7 +94,7 @@ fn load_indexes_blocking(conn: &Connection, table: &str) -> Result<Vec<IndexInfo
             Ok((
                 row.get::<_, String>(1)?, // name
                 row.get::<_, i64>(2)?,    // unique
-                row.get::<_, String>(4)?, // origin: c=CREATE INDEX, u=UNIQUE, pk=PRIMARY KEY
+                row.get::<_, String>("origin")?,
             ))
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -117,15 +122,16 @@ fn load_indexes_blocking(conn: &Connection, table: &str) -> Result<Vec<IndexInfo
 
 /// 外键：`PRAGMA foreign_key_list`，同一个 id 的是复合外键。
 fn load_foreign_keys_blocking(conn: &Connection, table: &str) -> Result<Vec<ForeignKey>> {
-    let sql = format!("PRAGMA foreign_key_list({})", quote_ident(table));
-    let mut stmt = conn.prepare(&sql)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, [table], [from], [to] FROM pragma_foreign_key_list(?1) ORDER BY id,seq",
+    )?;
     let rows = stmt
-        .query_map([], |row| {
+        .query_map([table], |row| {
             Ok((
                 row.get::<_, i64>(0)?,            // id（同组复合外键）
-                row.get::<_, String>(2)?,         // 引用表
-                row.get::<_, String>(3)?,         // 本表列
-                row.get::<_, Option<String>>(4)?, // 引用列（NULL 表示主键）
+                row.get::<_, String>(1)?,         // 引用表
+                row.get::<_, String>(2)?,         // 本表列
+                row.get::<_, Option<String>>(3)?, // 引用列（NULL 表示主键）
             ))
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;

@@ -7,6 +7,7 @@
 //!
 //! 字段结构优先读 validator 声明，没有声明时用采样观察兜底，并在表级标注来源。
 
+pub mod er;
 mod fields;
 
 use crate::options::ConnectionOptions;

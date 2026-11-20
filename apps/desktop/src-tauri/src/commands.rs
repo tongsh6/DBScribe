@@ -2,6 +2,7 @@
 //!
 //! 数据相关逻辑全部复用 `dbs-db` / `dbs-doc`，与 CLI 共享同一套核心实现。
 
+use crate::er::resolve_table_identities;
 use crate::models::{
     AppState, ColumnView, ConnectionParams, ExportParams, ExportProgress, ExportResult,
     HistoryEntry, Preferences, RenamedSheet, SavedConnection, TableSummary,
@@ -9,6 +10,7 @@ use crate::models::{
 use crate::secrets;
 use crate::store;
 use chrono::Local;
+use dbs_core::er::TableId;
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
 use dbs_db::{list_databases, load_tables, split_uri_password, ConnectionOptions};
 use dbs_doc::{export, ExportOptions};
@@ -18,7 +20,10 @@ use std::time::Instant;
 use tauri::Emitter;
 
 /// 把界面参数转成驱动层连接参数（按所选数据库类型）
-fn to_options(conn: &ConnectionParams, database: &str) -> Result<ConnectionOptions, String> {
+pub(crate) fn to_options(
+    conn: &ConnectionParams,
+    database: &str,
+) -> Result<ConnectionOptions, String> {
     let db_type: DbType = conn
         .db_type
         .parse()
@@ -33,7 +38,7 @@ fn to_options(conn: &ConnectionParams, database: &str) -> Result<ConnectionOptio
     ))
 }
 
-fn to_msg(err: anyhow::Error) -> String {
+pub(crate) fn to_msg(err: anyhow::Error) -> String {
     format!("{err:#}")
 }
 
@@ -66,10 +71,16 @@ pub async fn list_tables_cmd(
     database: String,
 ) -> Result<Vec<TableSummary>, String> {
     let opts = to_options(&conn, &database)?;
-    let tables = load_tables(&opts).await.map_err(to_msg)?;
+    // 集合选择是关系图与数据字典共用的入口；打开列表不应隐式读取业务文档。
+    let tables = if opts.db_type == DbType::MongoDb {
+        dbs_db::load_er_catalog(&opts).await.map_err(to_msg)?.tables
+    } else {
+        load_tables(&opts).await.map_err(to_msg)?
+    };
     Ok(tables
         .into_iter()
         .map(|t| TableSummary {
+            schema: t.schema,
             name: t.name,
             comment: t.comment,
             column_count: t.columns.len(),
@@ -77,17 +88,39 @@ pub async fn list_tables_cmd(
         .collect())
 }
 
-/// 读取单张表的列结构（界面预览用）。
+/// 读取单张表的列结构（界面预览用）。显式 schema 用于区分多 schema 同名表。
 #[tauri::command]
 pub async fn get_table_columns_cmd(
     conn: ConnectionParams,
     database: String,
     table: String,
+    schema: Option<String>,
 ) -> Result<Vec<ColumnView>, String> {
     let opts = to_options(&conn, &database)?;
-    let columns = dbs_db::load_table_columns(&opts, &table)
-        .await
-        .map_err(to_msg)?;
+    let schema = schema.unwrap_or_default();
+    // SQLite 固定 main；MySQL 的 schema 就是当前库，可继续走单表查询。
+    // 其他方言必须按 schema + 表名精确定位，避免多 schema 同名表读错。
+    let multi_schema = matches!(opts.db_type, DbType::PostgreSql | DbType::SqlServer);
+    let single_table_query = (schema.is_empty() && !multi_schema)
+        || (opts.db_type == DbType::MySql && schema == opts.database)
+        || (opts.db_type == DbType::Sqlite && schema == "main");
+    let columns = if single_table_query {
+        dbs_db::load_table_columns(&opts, &table)
+            .await
+            .map_err(to_msg)?
+    } else {
+        let tables = load_tables(&opts).await.map_err(to_msg)?;
+        let mut matches = tables
+            .into_iter()
+            .filter(|t| t.name == table && (schema.is_empty() || t.schema == schema));
+        let matched = matches.next().ok_or_else(|| format!("表不存在：{table}"))?;
+        if matches.next().is_some() {
+            return Err(format!(
+                "纯表名「{table}」在多个 schema 中存在，请指定 schema"
+            ));
+        }
+        matched.columns
+    };
     Ok(columns
         .into_iter()
         .map(|c| ColumnView {
@@ -243,10 +276,16 @@ pub async fn export_document(
         return Err(format!("数据库 {} 中没有任何基础表", params.database));
     }
 
-    // 仅导出勾选的表
+    // 仅导出勾选的表；显式 schema 避免多 schema 同名表被一起导出。
     if let Some(wanted) = params.tables.as_ref().filter(|w| !w.is_empty()) {
-        let wanted: HashSet<&str> = wanted.iter().map(String::as_str).collect();
-        tables.retain(|t| wanted.contains(t.name.as_str()));
+        let available: Vec<(String, String)> = tables
+            .iter()
+            .map(|t| (t.schema.clone(), t.name.clone()))
+            .collect();
+        let wanted: HashSet<TableId> = resolve_table_identities(&available, wanted)?
+            .into_iter()
+            .collect();
+        tables.retain(|t| wanted.contains(&TableId::from(t)));
         if tables.is_empty() {
             return Err("选中的表在数据库中不存在，请重新读取表结构".to_string());
         }

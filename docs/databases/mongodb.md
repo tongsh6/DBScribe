@@ -146,7 +146,7 @@ MongoDB 接入不得让现有格式产生「专属于 MongoDB 的分支」，以
 | 要求 | 实现方式 |
 | --- | --- |
 | 不输出「自增」列 | `DbType::MongoDb.has_identity_column()` 返回 `false`，`column_headers` 自动少一列（与 Oracle 一致） |
-| 不输出外键区块 / ER 图 | 外键恒空，Markdown 现有逻辑本就不输出 |
+| 数据字典不输出物理外键区块 | MongoDB 没有关系型外键；独立的集合关系图从验证规则、索引及可静态解释的视图读取证据 |
 | 不输出「分区表」标记 | `is_partitioned` 恒 `false` |
 | 单库导出表名不带库前缀 | `schema` 留空 |
 | 默认端口 27017 | `ConnectionOptions::default_port` |

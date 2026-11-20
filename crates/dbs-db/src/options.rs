@@ -82,13 +82,57 @@ impl ConnectionOptions {
             return format!("sqlite://{}", self.database);
         }
         // MongoDB 的 host 可能是完整连接串，里面带密码
-        if self.db_type == DbType::MongoDb && is_uri(self.host.trim()) {
-            return mask_uri_password(self.host.trim());
+        if self.db_type == DbType::MongoDb {
+            return format!("{}/{}", self.mongo_cluster(), self.database);
         }
         format!(
             "{}://{}@{}:{}/{}",
             self.db_type, self.user, self.host, self.port, self.database
         )
+    }
+}
+
+impl ConnectionOptions {
+    /// 用于报告及项目作用域。只保留协议和种子地址，认证信息与 URI 查询参数全部省略。
+    pub(crate) fn mongo_cluster(&self) -> String {
+        let raw = self.host.trim();
+        let (scheme, hosts, port) = match raw.split_once("://") {
+            Some((scheme, rest)) => {
+                let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+                let seeds = authority.rsplit('@').next().unwrap_or("");
+                (scheme, seeds, 27017)
+            }
+            None => ("mongodb", raw, self.port),
+        };
+        let mut seeds: Vec<String> = hosts
+            .split(',')
+            .map(|s| {
+                let s = s.trim();
+                if s.to_ascii_lowercase().starts_with("%2f") {
+                    return s.to_owned();
+                }
+                let s = s.to_ascii_lowercase();
+                if scheme.eq_ignore_ascii_case("mongodb+srv") {
+                    return s;
+                }
+                if s.starts_with('[') {
+                    if s.ends_with(']') {
+                        format!("{s}:{port}")
+                    } else {
+                        s
+                    }
+                } else {
+                    match s.bytes().filter(|b| *b == b':').count() {
+                        0 => format!("{s}:{port}"),
+                        1 => s,
+                        _ => format!("[{s}]:{port}"),
+                    }
+                }
+            })
+            .collect();
+        seeds.sort();
+        seeds.dedup();
+        format!("{}://{}", scheme.to_ascii_lowercase(), seeds.join(","))
     }
 }
 
@@ -151,14 +195,6 @@ pub fn inject_uri_password(uri: &str, password: &str) -> String {
         None => userinfo,
     };
     format!("{}{}:{}{}", &uri[..start], user, password, &uri[end..])
-}
-
-/// 把连接串里的密码替换为 `***`，避免日志与错误信息泄漏。
-fn mask_uri_password(uri: &str) -> String {
-    match split_uri_password(uri) {
-        (_, None) => uri.to_string(),
-        (clean, Some(_)) => inject_uri_password(&clean, "***"),
-    }
 }
 
 #[cfg(test)]

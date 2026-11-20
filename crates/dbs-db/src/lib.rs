@@ -3,6 +3,22 @@
 //! 通过统一的 [`ConnectionOptions`] 调用，按 [`DbType`] 分发到具体实现。
 //! 支持 MySQL / MariaDB、PostgreSQL、SQLite、SQL Server、Oracle、达梦 DM8 与 MongoDB。
 
+mod er_scope;
+mod mysql_views;
+mod remote_er;
+pub use er_scope::er_project_scope;
+
+/// 只读取结构和目录证据；MongoDB 集合关系走独立的元数据读取，不采样。
+pub async fn load_er_catalog(opts: &ConnectionOptions) -> anyhow::Result<dbs_core::er::ErCatalog> {
+    let mut catalog = match opts.db_type {
+        DbType::MongoDb => mongodb::er::load(opts).await,
+        DbType::Sqlite => sqlite::er::load(opts).await,
+        _ => remote_er::load(opts).await,
+    }?;
+    catalog.db_type = Some(opts.db_type);
+    Ok(catalog)
+}
+
 pub mod dameng;
 pub mod mongodb;
 pub mod mysql;

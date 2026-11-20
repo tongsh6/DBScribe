@@ -24,9 +24,112 @@ export interface SavedConnection {
 }
 
 export interface TableSummary {
+  /** schema / owner；MySQL 为库名，SQLite 为 main，其他方言为 owner。 */
+  schema: string;
   name: string;
   comment: string;
   column_count: number;
+}
+
+/** 表的真实身份：同名表用 schema 区分。 */
+export interface TableIdentity {
+  schema: string;
+  name: string;
+}
+
+export interface Endpoint {
+  table: TableIdentity;
+  columns: string[];
+}
+
+export type RelationKind = "declared" | "inferred" | "confirmed" | "lookup";
+
+export interface KeyCondition {
+  non_null_equality?: boolean;
+  evidence_kind?: "naming" | "view" | "view_mapping" | "migration" | "business" | "direct";
+  required_target: { column: string; value: string | boolean | number }[];
+  unbound_target_columns: string[];
+}
+
+export interface Relation {
+  source: Endpoint;
+  target: Endpoint;
+  kind: RelationKind;
+  reason: string;
+  condition?: KeyCondition;
+}
+
+export interface Candidate {
+  source: Endpoint;
+  target: Endpoint;
+  reason: string;
+  condition?: KeyCondition;
+}
+
+export type DecisionAction = "confirm" | "exclude";
+
+export interface Decision {
+  source: Endpoint;
+  target: Endpoint;
+  action: DecisionAction;
+  basis: string;
+}
+
+export interface ProjectScope {
+  db_type: string;
+  host: string;
+  port: number;
+  database: string;
+}
+
+/** 与 CLI 共用的 ER 项目修正文件。 */
+export interface ErProject {
+  scope: ProjectScope | null;
+  selected: TableIdentity[] | null;
+  decisions: Decision[];
+}
+
+export interface ErTableChoice extends TableIdentity {
+  comment: string;
+  columns: string[];
+  /** 完整唯一键，手工补充关系时作为目标字段建议。 */
+  keys: string[][];
+}
+
+export interface ErDiagram {
+  tables: unknown[];
+  relations: Relation[];
+  candidates: Candidate[];
+  external_count: number;
+  external_candidate_count: number;
+  warnings: string[];
+}
+
+export interface ErPreview {
+  session_id: number;
+  revision: number;
+  scope: ProjectScope;
+  scope_label: string;
+  tables: ErTableChoice[];
+  selected: TableIdentity[];
+  /** 字段已收起的表；与导出保持同一状态。 */
+  collapsed: TableIdentity[];
+  diagram: ErDiagram;
+  project: ErProject;
+  svg: string;
+  title: string;
+  show_all_columns: boolean;
+}
+
+export interface ErExportResult {
+  out_path: string;
+  table_count: number;
+  relation_count: number;
+  candidate_count: number;
+  external_count: number;
+  external_candidate_count: number;
+  warnings: string[];
+  elapsed_ms: number;
 }
 
 /** 列详情（表结构预览） */
@@ -84,5 +187,5 @@ export interface ExportPayload {
   format: string;
   sheet_mode: string;
   out_path: string;
-  tables: string[] | null;
+  tables: TableIdentity[] | null;
 }

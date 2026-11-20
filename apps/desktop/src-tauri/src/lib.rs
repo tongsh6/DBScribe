@@ -1,4 +1,5 @@
 mod commands;
+mod er;
 mod models;
 mod oracle_client;
 mod secrets;
@@ -14,6 +15,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(er::ErState::default())
         .setup(|app| {
             let handle = app.handle().clone();
             let Some(window) = app.get_webview_window("main") else {
@@ -102,6 +104,12 @@ pub fn run() {
             commands::clear_history,
             commands::export_document,
             commands::dameng_driver_status,
+            er::er_open_cmd,
+            er::er_render_cmd,
+            er::er_decide_cmd,
+            er::er_export_cmd,
+            er::er_read_project_cmd,
+            er::er_write_project_cmd,
             oracle_client::ensure_oracle_client,
             oracle_client::oracle_client_status,
         ])

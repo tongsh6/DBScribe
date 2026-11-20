@@ -4,7 +4,9 @@
 //! 一次查询取全库，避免 N+1。
 
 use crate::options::ConnectionOptions;
+use crate::remote_er::{ErEvidence, IndexCandidate, KeyPart};
 use anyhow::{Context, Result};
+use dbs_core::er::{ErCatalog, ErColumnType, TableId};
 use dbs_core::{ColumnInfo, ForeignKey, IndexInfo, TableInfo};
 use tokio_postgres::{Client, NoTls};
 
@@ -27,23 +29,25 @@ WHERE c.relkind = 'r'
 ORDER BY n.nspname, c.relname
 "#;
 
-/// 索引：pg_index + pg_attribute，按索引列顺序展开。
+/// 索引：按 INDKEY 的键位顺序展开，INCLUDE 列不进入键列。
 const INDEX_SQL: &str = r#"
 SELECT t.relname::text AS table_name,
        i.relname::text AS index_name,
        ix.indisunique AS is_unique,
        ix.indisprimary AS is_primary,
-       a.attname::text AS column_name,
+       COALESCE(a.attname, pg_get_indexdef(i.oid, k.ord::int, true))::text AS column_name,
        n.nspname::text AS schema_name
 FROM pg_class t
 JOIN pg_namespace n ON n.oid = t.relnamespace
 JOIN pg_index ix ON ix.indrelid = t.oid
 JOIN pg_class i ON i.oid = ix.indexrelid
-JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY (ix.indkey)
+JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord)
+  ON k.ord <= ix.indnkeyatts
+LEFT JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum <> 0
 WHERE t.relkind = 'r'
   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
   AND n.nspname NOT LIKE 'pg\_%'
-ORDER BY n.nspname, t.relname, i.relname, a.attnum
+ORDER BY n.nspname, t.relname, i.relname, k.ord
 "#;
 
 /// 外键：pg_constraint（contype = 'f'）。
@@ -320,6 +324,248 @@ fn split_type(full_type: &str) -> (String, String) {
     }
 }
 
+/// ER 类型签名：`format_type` 已包含长度/精度；仅当列显式覆盖排序规则时追加，
+/// 避免把展示类型当成完整比较依据。
+const ER_TYPE_SQL: &str = r#"
+SELECT n.nspname::text AS schema_name,
+       c.relname::text AS table_name,
+       a.attname::text AS column_name,
+       format_type(a.atttypid, a.atttypmod)::text AS full_type,
+       CASE WHEN a.attcollation <> 0 AND a.attcollation <> ty.typcollation
+            THEN (a.attcollation::regcollation)::text
+            ELSE ''
+       END AS collation_name
+FROM pg_attribute a
+JOIN pg_class c ON c.oid = a.attrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_type ty ON ty.oid = a.atttypid
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg\_%'
+  AND a.attnum > 0
+  AND NOT a.attisdropped
+ORDER BY n.nspname, c.relname, a.attnum
+"#;
+
+/// ER 唯一索引：按 INDKEY 位序读取；表达式键位 attnum=0；INCLUDE 列单独标记，
+/// 不参与键列；部分、无效、未就绪的索引保留状态供装配器拒绝并说明原因。
+const ER_INDEX_SQL: &str = r#"
+SELECT n.nspname::text AS schema_name,
+       t.relname::text AS table_name,
+       i.relname::text AS index_name,
+       ix.indisprimary AS is_primary,
+       ix.indisvalid AS is_valid,
+       ix.indisready AS is_ready,
+       (ix.indpred IS NOT NULL) AS is_partial,
+       (k.ord > ix.indnkeyatts) AS is_included,
+       k.ord::int4 AS ordinal,
+       a.attname::text AS column_name,
+       COALESCE(a.attnotnull, false) AS not_null
+FROM pg_class t
+JOIN pg_namespace n ON n.oid = t.relnamespace
+JOIN pg_index ix ON ix.indrelid = t.oid
+JOIN pg_class i ON i.oid = ix.indexrelid
+JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
+LEFT JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum <> 0
+WHERE t.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg\_%'
+  AND ix.indisunique
+ORDER BY n.nspname, t.relname, i.relname, k.ord
+"#;
+
+#[derive(Debug, Clone)]
+struct PgTypeRow {
+    schema: String,
+    table: String,
+    column: String,
+    full_type: String,
+    collation: String,
+}
+
+#[derive(Debug, Clone)]
+struct PgIndexRow {
+    schema: String,
+    table: String,
+    index: String,
+    primary: bool,
+    valid: bool,
+    ready: bool,
+    partial: bool,
+    included: bool,
+    ordinal: i32,
+    column: Option<String>,
+    not_null: bool,
+}
+
+/// 读取 ER 专用证据：完整类型签名与按 INDKEY 位序排列的完整唯一键。
+pub(crate) async fn load_er_catalog(opts: &ConnectionOptions) -> Result<ErCatalog> {
+    let tables = load_tables(opts).await?;
+    let evidence = read_er_evidence(opts, &tables).await;
+    Ok(crate::remote_er::assemble_read(tables, evidence))
+}
+
+async fn read_er_evidence(opts: &ConnectionOptions, tables: &[TableInfo]) -> Result<ErEvidence> {
+    let client = connect(opts, &opts.database).await?;
+    let type_rows = client
+        .query(ER_TYPE_SQL, &[])
+        .await
+        .context("查询 PostgreSQL ER 类型信息失败")?;
+    let type_rows: Vec<PgTypeRow> = type_rows
+        .iter()
+        .map(|row| PgTypeRow {
+            schema: row.get(0),
+            table: row.get(1),
+            column: row.get(2),
+            full_type: row.get(3),
+            collation: row.get(4),
+        })
+        .collect();
+
+    let index_rows = client
+        .query(ER_INDEX_SQL, &[])
+        .await
+        .context("查询 PostgreSQL ER 唯一索引失败")?;
+    let index_rows: Vec<PgIndexRow> = index_rows
+        .iter()
+        .map(|row| PgIndexRow {
+            schema: row.get(0),
+            table: row.get(1),
+            index: row.get(2),
+            primary: row.get(3),
+            valid: row.get(4),
+            ready: row.get(5),
+            partial: row.get(6),
+            included: row.get(7),
+            ordinal: row.get(8),
+            column: row.get(9),
+            not_null: row.get(10),
+        })
+        .collect();
+
+    Ok(evidence_from_rows(tables, &type_rows, &index_rows))
+}
+
+/// 把 PostgreSQL 目录行装配成 ER 证据；不连接数据库，便于验证位序与状态规则。
+fn evidence_from_rows(
+    tables: &[TableInfo],
+    type_rows: &[PgTypeRow],
+    index_rows: &[PgIndexRow],
+) -> ErEvidence {
+    let mut evidence = ErEvidence::default();
+
+    for row in type_rows {
+        let signature = pg_type_signature(&row.full_type, &row.collation);
+        if signature.is_empty() {
+            match tables.iter().find(|table| {
+                table.schema.eq_ignore_ascii_case(&row.schema)
+                    && table.name.eq_ignore_ascii_case(&row.table)
+            }) {
+                Some(table) => evidence.warn_table(
+                    table,
+                    format!(
+                        "PostgreSQL 表 {}.{} 的列 {} 没有可比较的类型签名",
+                        row.schema, row.table, row.column
+                    ),
+                ),
+                None => evidence.warn(format!(
+                    "PostgreSQL 表 {}.{} 的列 {} 没有可比较的类型签名",
+                    row.schema, row.table, row.column
+                )),
+            }
+            continue;
+        }
+        evidence.types.push(ErColumnType {
+            table: TableId {
+                schema: row.schema.clone(),
+                name: row.table.clone(),
+            },
+            column: row.column.clone(),
+            signature,
+        });
+    }
+
+    // (schema, table) -> index -> rows
+    let mut grouped: std::collections::BTreeMap<
+        (String, String),
+        std::collections::BTreeMap<String, Vec<&PgIndexRow>>,
+    > = std::collections::BTreeMap::new();
+    for row in index_rows {
+        grouped
+            .entry((
+                row.schema.to_ascii_lowercase(),
+                row.table.to_ascii_lowercase(),
+            ))
+            .or_default()
+            .entry(row.index.clone())
+            .or_default()
+            .push(row);
+    }
+
+    for table in tables {
+        let key = (
+            table.schema.to_ascii_lowercase(),
+            table.name.to_ascii_lowercase(),
+        );
+        let Some(indexes) = grouped.get(&key) else {
+            continue;
+        };
+
+        let mut candidates = Vec::with_capacity(indexes.len());
+        for (name, rows) in indexes {
+            let mut rows = rows.to_vec();
+            rows.sort_by_key(|row| row.ordinal);
+            let mut candidate =
+                IndexCandidate::new(name.clone(), rows.iter().any(|r| r.primary), Vec::new());
+            let mut gap = Vec::new();
+            for row in rows {
+                if row.included {
+                    // INCLUDE 列不参与唯一键，忽略即可。
+                    continue;
+                }
+                if !row.valid {
+                    gap.push("索引未通过有效性检查（indisvalid=false）".to_string());
+                }
+                if !row.ready {
+                    gap.push("索引未完成构建（indisready=false）".to_string());
+                }
+                if row.partial {
+                    gap.push("部分索引（带 WHERE 条件）只覆盖部分行".to_string());
+                }
+                match row.column.as_deref() {
+                    Some(column) if !column.is_empty() => {
+                        candidate.parts.push(KeyPart::column(column, !row.not_null));
+                    }
+                    _ => candidate.parts.push(KeyPart::gap(
+                        "键位是表达式（INDKEY 中 attnum=0），不是普通列",
+                    )),
+                }
+            }
+            if !gap.is_empty() {
+                gap.sort();
+                gap.dedup();
+                candidate = candidate.unusable(gap.join("；"));
+            }
+            candidates.push(candidate);
+        }
+        let keys =
+            crate::remote_er::collect_keys("PostgreSQL", table, &candidates, true, &mut evidence);
+        evidence.keys.extend(keys);
+    }
+
+    evidence
+}
+
+/// PostgreSQL 类型签名：保留 `format_type` 的完整声明，只有显式排序规则才追加。
+pub(crate) fn pg_type_signature(full_type: &str, collation: &str) -> String {
+    let full_type = full_type.trim();
+    if collation.trim().is_empty() {
+        full_type.to_string()
+    } else {
+        format!("{full_type} collate {}", collation.trim())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,5 +585,127 @@ mod tests {
             split_type("timestamp without time zone"),
             ("timestamp without time zone".to_string(), String::new())
         );
+    }
+
+    #[test]
+    fn type_signature_keeps_declared_shape_and_only_explicit_collation() {
+        assert_eq!(
+            pg_type_signature("character varying(64)", ""),
+            "character varying(64)"
+        );
+        assert_eq!(
+            pg_type_signature("character varying(64)", "\"C\""),
+            "character varying(64) collate \"C\""
+        );
+        assert_ne!(
+            pg_type_signature("character varying(64)", ""),
+            pg_type_signature("character varying(32)", "")
+        );
+        assert_ne!(
+            pg_type_signature("numeric(10,2)", ""),
+            pg_type_signature("numeric(12,2)", "")
+        );
+    }
+
+    fn column(name: &str, not_null: bool) -> ColumnInfo {
+        ColumnInfo {
+            order: 1,
+            name: name.into(),
+            data_type: "x".into(),
+            length: String::new(),
+            is_primary_key: false,
+            is_auto_increment: false,
+            nullable: !not_null,
+            default_value: String::new(),
+            comment: String::new(),
+        }
+    }
+
+    fn table(name: &str, columns: Vec<ColumnInfo>) -> TableInfo {
+        TableInfo {
+            order: 1,
+            schema: "app".into(),
+            name: name.into(),
+            columns,
+            ..Default::default()
+        }
+    }
+
+    fn index_row(
+        index: &str,
+        ordinal: i32,
+        column: Option<&str>,
+        not_null: bool,
+        included: bool,
+    ) -> PgIndexRow {
+        PgIndexRow {
+            schema: "app".into(),
+            table: "items".into(),
+            index: index.into(),
+            primary: index == "pk_items",
+            valid: true,
+            ready: true,
+            partial: false,
+            included,
+            ordinal,
+            column: column.map(str::to_string),
+            not_null,
+        }
+    }
+
+    #[test]
+    fn indkey_order_include_and_unusable_index_rules() {
+        let items = table(
+            "items",
+            vec![
+                column("id", true),
+                column("tenant_id", true),
+                column("code", true),
+                column("optional", false),
+                column("payload", false),
+            ],
+        );
+        let mut rows = vec![
+            // 故意打乱输入顺序：装配器必须按 INDKEY 位序恢复。
+            index_row("pk_items", 2, Some("id"), true, false),
+            index_row("pk_items", 1, Some("tenant_id"), true, false),
+            // INCLUDE 列不参与唯一键。
+            index_row("uk_code", 1, Some("code"), true, false),
+            index_row("uk_code", 2, Some("payload"), false, true),
+            index_row("uk_optional", 1, Some("optional"), false, false),
+            index_row("uk_expr", 1, None, false, false),
+        ];
+        let mut partial = index_row("uk_partial", 1, Some("code"), true, false);
+        partial.partial = true;
+        rows.push(partial);
+        let mut invalid = index_row("uk_invalid", 1, Some("code"), true, false);
+        invalid.valid = false;
+        rows.push(invalid);
+
+        let evidence = evidence_from_rows(&[items], &[], &rows);
+        assert!(
+            evidence
+                .keys
+                .iter()
+                .any(|key| key.columns == ["tenant_id", "id"]),
+            "{:?}",
+            evidence.keys
+        );
+        assert!(
+            evidence.keys.iter().any(|key| key.columns == ["code"]),
+            "INCLUDE 列不应进入唯一键：{:?}",
+            evidence.keys
+        );
+        assert_eq!(evidence.keys.len(), 2, "{:?}", evidence.keys);
+        for expected in ["可为 NULL", "部分索引", "表达式", "indisvalid=false"] {
+            assert!(
+                evidence
+                    .scoped_warnings
+                    .iter()
+                    .any(|warning| warning.message.contains(expected)),
+                "缺少警告 {expected}：{:?}",
+                evidence.scoped_warnings
+            );
+        }
     }
 }

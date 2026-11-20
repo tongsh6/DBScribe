@@ -16,5 +16,5 @@ serde_json.workspace = true
 rust_xlsxwriter = "0.102.0"
 docx-rs = "0.4.22"
 
-[dev-dependencies]
+same-file = "1"
 tempfile = "3"

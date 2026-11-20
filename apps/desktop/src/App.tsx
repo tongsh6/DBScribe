@@ -5,6 +5,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ConnectionManager } from "./components/ConnectionManager";
 import { EmptyGuide } from "./components/EmptyGuide";
+import { ErPanel } from "./components/ErPanel";
 import { NotificationCenter } from "./components/NotificationCenter";
 import { TableSkeleton } from "./components/TableSkeleton";
 import { ToastStack } from "./components/ToastStack";
@@ -12,6 +13,7 @@ import { TableDetail } from "./components/TableDetail";
 import { createNotice, type Notice, type NoticeKind } from "./notifications";
 import { explainError } from "./errors";
 import { DB_TYPES, dbTypeSpec, isConnectionString } from "./dbTypes";
+import { tableKey, tableLabel } from "./er";
 import type {
   AppState,
   ColumnView,
@@ -19,6 +21,7 @@ import type {
   ExportResult,
   HistoryEntry,
   SavedConnection,
+  TableIdentity,
   TableSummary,
 } from "./types";
 import "./App.css";
@@ -81,6 +84,7 @@ function App() {
   const [toasts, setToasts] = useState<Notice[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [erOpen, setErOpen] = useState(false);
   const [activeRow, setActiveRow] = useState(-1);
   const [prefsReady, setPrefsReady] = useState(false);
 
@@ -121,6 +125,7 @@ function App() {
   // 键盘快捷键：Ctrl/Cmd+F 聚焦搜索，Esc 关闭弹窗与抽屉
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (erOpen) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
         e.preventDefault();
         searchRef.current?.focus();
@@ -132,7 +137,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [erOpen]);
 
   // 监听后端导出进度事件
   useEffect(() => {
@@ -214,7 +219,7 @@ function App() {
             database: first,
           });
           setTables(rows);
-          setSelected(new Set(rows.map((t) => t.name)));
+          setSelected(new Set(rows.map(tableKey)));
         }
       } catch {
         /* 静默失败：用户手动点「测试连接」可看到具体原因 */
@@ -236,6 +241,11 @@ function App() {
   useEffect(() => {
     if (database) setTitle(`${databaseDisplay}数据库设计文档`);
   }, [database]);
+
+  // 连接或库变化时，旧目录快照不再可信，必须先关闭 ER 面板。
+  useEffect(() => {
+    setErOpen(false);
+  }, [conn.db_type, conn.host, conn.port, conn.user, database]);
 
   const selectConnection = async (id: string) => {
     if (!id) return;
@@ -314,7 +324,7 @@ function App() {
           database: target,
         });
         setTables(list);
-        setSelected(new Set(list.map((t) => t.name)));
+        setSelected(new Set(list.map(tableKey)));
         await rememberConnection();
       } catch (e) {
         setTables([]);
@@ -384,6 +394,7 @@ function App() {
           conn,
           database,
           table: table.name,
+          schema: table.schema,
         });
         setPreviewColumns(columns);
       } catch (e) {
@@ -423,7 +434,7 @@ function App() {
     let list = tables;
     if (terms.length > 0) {
       list = list.filter((t) => {
-        const haystack = `${t.name}\n${t.comment}`.toLowerCase();
+        const haystack = `${tableLabel(t, database)}\n${t.name}\n${t.comment}`.toLowerCase();
         return terms.every((term) => haystack.includes(term));
       });
     }
@@ -431,18 +442,24 @@ function App() {
     return [...list].sort((a, b) => {
       switch (sortKey) {
         case "columns":
-          return (a.column_count - b.column_count) * dir || a.name.localeCompare(b.name);
+          return (
+            (a.column_count - b.column_count) * dir ||
+            tableLabel(a, database).localeCompare(tableLabel(b, database))
+          );
         case "comment":
-          return a.comment.localeCompare(b.comment, "zh") * dir || a.name.localeCompare(b.name);
+          return (
+            a.comment.localeCompare(b.comment, "zh") * dir ||
+            tableLabel(a, database).localeCompare(tableLabel(b, database))
+          );
         default:
-          return a.name.localeCompare(b.name) * dir;
+          return tableLabel(a, database).localeCompare(tableLabel(b, database)) * dir;
       }
     });
-  }, [tables, debouncedFilter, sortKey, sortAsc]);
+  }, [tables, debouncedFilter, sortKey, sortAsc, database]);
 
   // 键盘导航：上下键移动、空格勾选、Enter 预览（可访问性）
   const onTableKeyDown = (e: React.KeyboardEvent) => {
-    if (visibleTables.length === 0) return;
+    if (erOpen || visibleTables.length === 0) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       setActiveRow((prev) => {
@@ -454,7 +471,7 @@ function App() {
       });
     } else if (e.key === " " && activeRow >= 0) {
       e.preventDefault();
-      toggleTable(visibleTables[activeRow].name);
+      toggleTable(tableKey(visibleTables[activeRow]));
     } else if (e.key === "Enter" && activeRow >= 0) {
       e.preventDefault();
       openPreview(visibleTables[activeRow]);
@@ -478,19 +495,34 @@ function App() {
     sortKey === key ? (sortAsc ? " ▲" : " ▼") : "";
 
   const selectedCount = useMemo(
-    () => tables.reduce((n, t) => (selected.has(t.name) ? n + 1 : n), 0),
+    () => tables.reduce((n, t) => (selected.has(tableKey(t)) ? n + 1 : n), 0),
     [tables, selected],
   );
   const totalColumns = useMemo(
     () => tables.reduce((sum, t) => sum + t.column_count, 0),
     [tables],
   );
+  const erSelected = useMemo<TableIdentity[]>(
+    () =>
+      tables
+        .filter((t) => selected.has(tableKey(t)))
+        .map((t) => ({ schema: t.schema, name: t.name })),
+    [tables, selected],
+  );
 
-  const toggleTable = (name: string) => {
+  const openEr = useCallback(() => {
+    if (erSelected.length === 0) {
+      notify("error", "请至少勾选一张表", "在表列表中勾选用于 ER 图的表，再点击「ER 图预览」。");
+      return;
+    }
+    setErOpen(true);
+  }, [erSelected.length, notify]);
+
+  const toggleTable = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -498,7 +530,7 @@ function App() {
   const selectAllVisible = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      visibleTables.forEach((t) => next.add(t.name));
+      visibleTables.forEach((t) => next.add(tableKey(t)));
       return next;
     });
   };
@@ -507,8 +539,9 @@ function App() {
     setSelected((prev) => {
       const next = new Set(prev);
       visibleTables.forEach((t) => {
-        if (next.has(t.name)) next.delete(t.name);
-        else next.add(t.name);
+        const key = tableKey(t);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
       });
       return next;
     });
@@ -542,7 +575,9 @@ function App() {
         ? `${outDir}${fileName}`
         : `${outDir}${sep}${fileName}`;
 
-    const chosen = tables.filter((t) => selected.has(t.name)).map((t) => t.name);
+    const chosen = tables
+      .filter((t) => selected.has(tableKey(t)))
+      .map((t) => ({ schema: t.schema, name: t.name }));
     const tablesParam = chosen.length === tables.length ? null : chosen;
 
     setBusy("export");
@@ -897,17 +932,35 @@ function App() {
               <span className="muted">
                 {" "}
                 {tables.length > 0 &&
-                  `· 共 ${tables.length} 张表 / ${totalColumns} 列 · 已选 ${selectedCount}`}
+                  (conn.db_type === "mongodb"
+                    ? `· 共 ${tables.length} 个集合 / ${totalColumns} 个已知字段 · 已选 ${selectedCount}`
+                    : `· 共 ${tables.length} 张表 / ${totalColumns} 列 · 已选 ${selectedCount}`)}
               </span>
             </div>
-            <input
-              ref={searchRef}
-              className="search"
-              placeholder="搜索表名或注释… (Ctrl+F)"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              disabled={tables.length === 0}
-            />
+            <div className="toolbar-actions">
+                <button
+                  className="primary"
+                  onClick={openEr}
+                  disabled={selectedCount === 0 || !!busy || tables.length === 0}
+                  title={
+                    tables.length === 0
+                      ? "请先读取表结构"
+                      : selectedCount === 0
+                        ? "请至少勾选一张表"
+                        : "从当前勾选进入 ER 预览"
+                  }
+                >
+                  {conn.db_type === "mongodb" ? "集合关系图预览" : "ER 图预览"}
+                </button>
+              <input
+                ref={searchRef}
+                className="search"
+                placeholder="搜索表名或注释… (Ctrl+F)"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                disabled={tables.length === 0}
+              />
+            </div>
           </div>
 
           {tables.length > 0 && (
@@ -954,54 +1007,57 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleTables.map((t, i) => (
-                    <tr
-                      key={t.name}
-                      id={`tbl-row-${i}`}
-                      className={`${selected.has(t.name) ? "selected" : ""} ${i === activeRow ? "active" : ""}`}
-                      onClick={() => {
-                        setActiveRow(i);
-                        toggleTable(t.name);
-                      }}
-                      onDoubleClick={() => openPreview(t)}
-                    >
-                      <td className="center">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(t.name)}
-                          onChange={() => toggleTable(t.name)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td className="num">{i + 1}</td>
-                      <td className="mono">
-                        <button
-                          className="link"
-                          title="查看表结构"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPreview(t);
-                          }}
-                        >
-                          {t.name}
-                        </button>
-                      </td>
-                      <td>{t.comment}</td>
-                      <td className="num">{t.column_count}</td>
-                      <td className="row-actions">
-                        <button
-                          className="ghost"
-                          title="查看表结构"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPreview(t);
-                          }}
-                        >
-                          结构
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {visibleTables.map((t, i) => {
+                    const key = tableKey(t);
+                    return (
+                      <tr
+                        key={key}
+                        id={`tbl-row-${i}`}
+                        className={`${selected.has(key) ? "selected" : ""} ${i === activeRow ? "active" : ""}`}
+                        onClick={() => {
+                          setActiveRow(i);
+                          toggleTable(key);
+                        }}
+                        onDoubleClick={() => openPreview(t)}
+                      >
+                        <td className="center">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(key)}
+                            onChange={() => toggleTable(key)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                        <td className="num">{i + 1}</td>
+                        <td className="mono">
+                          <button
+                            className="link"
+                            title="查看表结构"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPreview(t);
+                            }}
+                          >
+                            {tableLabel(t, database)}
+                          </button>
+                        </td>
+                        <td>{t.comment}</td>
+                        <td className="num">{t.column_count}</td>
+                        <td className="row-actions">
+                          <button
+                            className="ghost"
+                            title="查看表结构"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPreview(t);
+                            }}
+                          >
+                            结构
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -1122,9 +1178,27 @@ function App() {
         onUse={applyConnection}
       />
 
+      <ErPanel
+        open={erOpen}
+        conn={conn}
+        database={database}
+        databaseDisplay={databaseDisplay}
+        defaultDir={outDir}
+        selected={erSelected}
+        onClose={() => setErOpen(false)}
+        onNotify={notify}
+        onRevealPath={revealPath}
+        onExported={() => {
+          refreshState()
+            .then((state) => setHistory(state.history ?? []))
+            .catch(() => undefined);
+        }}
+      />
+
       <TableDetail
         open={!!previewTable}
         table={previewTable}
+        database={database}
         columns={previewColumns}
         loading={previewLoading}
         error={previewError}

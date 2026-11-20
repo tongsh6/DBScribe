@@ -7,7 +7,10 @@
 #[cfg(not(target_os = "macos"))]
 use crate::odbc_util;
 use crate::options::ConnectionOptions;
+#[cfg(not(target_os = "macos"))]
+use crate::remote_er::{self, ErEvidence};
 use anyhow::{Context, Result};
+use dbs_core::er::ErCatalog;
 use dbs_core::{ColumnInfo, TableInfo};
 #[cfg(not(target_os = "macos"))]
 use dbs_core::{ForeignKey, IndexInfo};
@@ -82,6 +85,7 @@ WHERE c.constraint_type = 'P' AND c.owner = '{OWNER}'
 #[cfg(not(target_os = "macos"))]
 const FK_SQL: &str = r#"
 SELECT c.table_name, c.constraint_name, cc.column_name,
+       r.owner AS ref_owner,
        r.table_name AS ref_table, rcc.column_name AS ref_column
 FROM all_constraints c
 JOIN all_cons_columns cc
@@ -261,31 +265,8 @@ fn load_tables_blocking(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
         }
     }
 
-    // 外键
-    let mut fks_by_table: std::collections::HashMap<String, Vec<ForeignKey>> =
-        std::collections::HashMap::new();
-    for row in query_rows(&conn, &sql(FK_SQL))? {
-        let table_name = row.first().cloned().unwrap_or_default();
-        let constraint = row.get(1).cloned().unwrap_or_default();
-        let column_name = row.get(2).cloned().unwrap_or_default();
-        let ref_table = row.get(3).cloned().unwrap_or_default();
-        let ref_column = row.get(4).cloned().unwrap_or_default();
-
-        let list = fks_by_table.entry(table_name).or_default();
-        match list.iter_mut().find(|f| f.name == constraint) {
-            Some(existing) => {
-                existing.columns.push(column_name);
-                existing.ref_columns.push(ref_column);
-            }
-            None => list.push(ForeignKey {
-                name: constraint,
-                columns: vec![column_name],
-                ref_schema: owner.clone(),
-                ref_table,
-                ref_columns: vec![ref_column],
-            }),
-        }
-    }
+    // 外键；目标 owner 取被引用约束的 owner，而不是当前登录用户。
+    let mut fks_by_table = group_foreign_keys(&query_rows(&conn, &sql(FK_SQL))?);
 
     // 分区表
     let partitioned: std::collections::HashSet<String> = query_rows(&conn, &sql(PARTITION_SQL))?
@@ -318,6 +299,37 @@ fn load_tables_blocking(opts: &ConnectionOptions) -> Result<Vec<TableInfo>> {
     Ok(tables)
 }
 
+/// 合并同一约束的多列，并保留被引用约束的真实 owner。
+#[cfg(not(target_os = "macos"))]
+fn group_foreign_keys(rows: &[Vec<String>]) -> std::collections::HashMap<String, Vec<ForeignKey>> {
+    let mut fks_by_table: std::collections::HashMap<String, Vec<ForeignKey>> =
+        std::collections::HashMap::new();
+    for row in rows {
+        let table_name = row.first().cloned().unwrap_or_default();
+        let constraint = row.get(1).cloned().unwrap_or_default();
+        let column_name = row.get(2).cloned().unwrap_or_default();
+        let ref_schema = row.get(3).cloned().unwrap_or_default();
+        let ref_table = row.get(4).cloned().unwrap_or_default();
+        let ref_column = row.get(5).cloned().unwrap_or_default();
+
+        let list = fks_by_table.entry(table_name).or_default();
+        match list.iter_mut().find(|f| f.name == constraint) {
+            Some(existing) => {
+                existing.columns.push(column_name);
+                existing.ref_columns.push(ref_column);
+            }
+            None => list.push(ForeignKey {
+                name: constraint,
+                columns: vec![column_name],
+                ref_schema,
+                ref_table,
+                ref_columns: vec![ref_column],
+            }),
+        }
+    }
+    fks_by_table
+}
+
 /// 与 Oracle 一致的类型长度格式化。
 #[cfg(not(target_os = "macos"))]
 fn format_length(
@@ -340,6 +352,194 @@ fn format_length(
     }
 }
 
+/// ER 类型签名（与 Oracle 共享格式化）：保留字符语义、字符集、精度和小数秒。
+#[cfg(not(target_os = "macos"))]
+const ER_TYPE_SQL: &str = r#"
+SELECT c.table_name, c.column_name, c.data_type, c.data_length,
+       c.data_precision, c.data_scale, c.char_length, c.char_used,
+       c.character_set_name
+FROM all_tab_columns c
+WHERE c.owner = '{OWNER}'
+ORDER BY c.table_name, c.column_id
+"#;
+
+/// ER 键约束：保留约束状态、验证状态和背后索引的状态。
+#[cfg(not(target_os = "macos"))]
+const ER_CONSTRAINT_SQL: &str = r#"
+SELECT c.table_name, c.constraint_name, c.constraint_type, cc.column_name,
+       cc.position, c.status, c.validated,
+       i.status AS index_status, i.index_type, tc.nullable
+FROM all_constraints c
+JOIN all_cons_columns cc
+  ON cc.owner = c.owner AND cc.constraint_name = c.constraint_name
+LEFT JOIN all_indexes i
+  ON i.owner = COALESCE(c.index_owner, c.owner) AND i.index_name = c.index_name
+LEFT JOIN all_tab_columns tc
+  ON tc.owner = c.owner
+ AND tc.table_name = c.table_name
+ AND tc.column_name = cc.column_name
+WHERE c.owner = '{OWNER}'
+  AND c.constraint_type IN ('P', 'U')
+ORDER BY c.table_name, c.constraint_name, cc.position
+"#;
+
+/// 独立唯一索引：约束背后的索引不算；函数索引、不可用和分区索引保留状态。
+#[cfg(not(target_os = "macos"))]
+const ER_INDEX_SQL: &str = r#"
+SELECT i.table_name, i.index_name, i.status, i.index_type, i.partitioned,
+       ic.column_name, ic.column_position, tc.nullable
+FROM all_indexes i
+JOIN all_ind_columns ic
+  ON ic.index_owner = i.owner AND ic.index_name = i.index_name
+LEFT JOIN all_tab_columns tc
+  ON tc.owner = i.table_owner
+ AND tc.table_name = i.table_name
+ AND tc.column_name = ic.column_name
+WHERE i.table_owner = '{OWNER}'
+  AND i.uniqueness = 'UNIQUE'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM all_constraints c
+      WHERE c.owner = i.table_owner
+        AND c.constraint_type IN ('P', 'U')
+        AND c.table_name = i.table_name
+        AND c.index_name = i.index_name
+  )
+ORDER BY i.table_name, i.index_name, ic.column_position
+"#;
+
+/// 外键状态：禁用/未验证的外键仍是声明事实，但不证明引用完整性。
+#[cfg(not(target_os = "macos"))]
+const ER_FK_STATUS_SQL: &str = r#"
+SELECT table_name, constraint_name, status, validated
+FROM all_constraints
+WHERE owner = '{OWNER}' AND constraint_type = 'R'
+ORDER BY table_name, constraint_name
+"#;
+
+/// 读取 ER 专用证据：完整类型签名、约束/唯一索引的有效键及外键状态。
+pub(crate) async fn load_er_catalog(opts: &ConnectionOptions) -> Result<ErCatalog> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = opts;
+        anyhow::bail!("达梦数据库暂不支持 macOS（官方未提供 macOS 版 ODBC 驱动）")
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let tables = load_tables(opts).await?;
+        let opts = opts.clone();
+        let evidence_tables = tables.clone();
+        let evidence =
+            tokio::task::spawn_blocking(move || read_er_evidence(&opts, &evidence_tables))
+                .await
+                .context("达梦读取 ER 证据任务异常退出")
+                .and_then(|result| result);
+        Ok(remote_er::assemble_read(tables, evidence))
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn read_er_evidence(opts: &ConnectionOptions, tables: &[TableInfo]) -> Result<ErEvidence> {
+    let connection_string = connection_string(opts)?;
+    let env = Environment::new().context("初始化 ODBC 环境失败")?;
+    let conn = env
+        .connect(&connection_string, "", "", OdbcOptions::default())
+        .context("连接达梦失败（请检查地址、端口、账号密码）")?;
+    let owner = owner_of(opts);
+    let sql = |template: &str| template.replace("{OWNER}", &owner);
+
+    let mut type_rows = Vec::new();
+    for row in query_rows(&conn, &sql(ER_TYPE_SQL))? {
+        type_rows.push(remote_er::OracleLikeTypeRow {
+            table: text(&row, 0),
+            column: text(&row, 1),
+            data_type: text(&row, 2),
+            data_length: number(&row, 3),
+            precision: number(&row, 4),
+            scale: number(&row, 5),
+            char_length: number(&row, 6),
+            char_used: optional_text(&row, 7),
+            charset: optional_text(&row, 8),
+        });
+    }
+
+    let mut constraint_rows = Vec::new();
+    for row in query_rows(&conn, &sql(ER_CONSTRAINT_SQL))? {
+        constraint_rows.push(remote_er::OracleLikeConstraintRow {
+            table: text(&row, 0),
+            constraint: text(&row, 1),
+            kind: text(&row, 2),
+            column: text(&row, 3),
+            position: number(&row, 4).unwrap_or(0),
+            status: text(&row, 5),
+            validated: text(&row, 6),
+            index_status: optional_text(&row, 7),
+            index_type: optional_text(&row, 8),
+            nullable: optional_bool(&row, 9),
+        });
+    }
+
+    let mut index_rows = Vec::new();
+    for row in query_rows(&conn, &sql(ER_INDEX_SQL))? {
+        index_rows.push(remote_er::OracleLikeIndexRow {
+            table: text(&row, 0),
+            index: text(&row, 1),
+            status: text(&row, 2),
+            index_type: text(&row, 3),
+            partitioned: text(&row, 4),
+            column: text(&row, 5),
+            position: number(&row, 6).unwrap_or(0),
+            nullable: optional_bool(&row, 7),
+        });
+    }
+
+    let mut fk_rows = Vec::new();
+    for row in query_rows(&conn, &sql(ER_FK_STATUS_SQL))? {
+        fk_rows.push(remote_er::OracleLikeFkRow {
+            table: text(&row, 0),
+            constraint: text(&row, 1),
+            status: text(&row, 2),
+            validated: text(&row, 3),
+        });
+    }
+
+    Ok(remote_er::oracle_like_evidence(
+        "达梦",
+        &owner,
+        tables,
+        &type_rows,
+        &constraint_rows,
+        &index_rows,
+        &fk_rows,
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn text(row: &[String], idx: usize) -> String {
+    row.get(idx).cloned().unwrap_or_default()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn optional_text(row: &[String], idx: usize) -> Option<String> {
+    row.get(idx)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn number(row: &[String], idx: usize) -> Option<i64> {
+    row.get(idx).and_then(|value| value.trim().parse().ok())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn optional_bool(row: &[String], idx: usize) -> Option<bool> {
+    row.get(idx)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.eq_ignore_ascii_case("Y"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,6 +551,47 @@ mod tests {
         assert_eq!(format_length("NVARCHAR2", Some(200), None, None), "100");
         assert_eq!(format_length("NUMBER", None, Some(10), Some(2)), "10,2");
         assert_eq!(format_length("DATE", Some(7), None, None), "");
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn foreign_key_group_keeps_referenced_owner_and_column_order() {
+        let rows = vec![
+            vec![
+                "ORDERS".into(),
+                "FK_ORDERS_CUSTOMER".into(),
+                "TENANT_ID".into(),
+                "CRM".into(),
+                "CUSTOMERS".into(),
+                "TENANT_ID".into(),
+            ],
+            vec![
+                "ORDERS".into(),
+                "FK_ORDERS_CUSTOMER".into(),
+                "CUSTOMER_ID".into(),
+                "CRM".into(),
+                "CUSTOMERS".into(),
+                "ID".into(),
+            ],
+        ];
+        let grouped = group_foreign_keys(&rows);
+        let fk = &grouped["ORDERS"][0];
+        assert_eq!(fk.ref_schema, "CRM");
+        assert_eq!(fk.ref_table, "CUSTOMERS");
+        assert_eq!(fk.columns, ["TENANT_ID", "CUSTOMER_ID"]);
+        assert_eq!(fk.ref_columns, ["TENANT_ID", "ID"]);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn optional_catalog_values_distinguish_unknown_from_false() {
+        let row = vec![String::new(), "N".into(), "Y".into(), "  ".into()];
+        assert_eq!(optional_bool(&row, 0), None);
+        assert_eq!(optional_bool(&row, 1), Some(false));
+        assert_eq!(optional_bool(&row, 2), Some(true));
+        assert_eq!(optional_bool(&row, 3), None);
+        assert_eq!(optional_text(&row, 0), None);
+        assert_eq!(optional_text(&row, 1), Some("N".into()));
     }
 
     #[test]

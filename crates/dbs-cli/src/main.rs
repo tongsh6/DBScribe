@@ -1,5 +1,7 @@
 //! DBScribe 命令行入口。
 
+mod er;
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use dbs_core::{DatabaseInfo, DbType, OutputFormat, SheetMode};
@@ -30,6 +32,8 @@ enum Command {
     Export(ExportArgs),
     /// 列出连接下可导出的数据库
     Databases(DatabasesArgs),
+    /// 导出离线 ER 图
+    Er(er::ErArgs),
 }
 
 /// 数据库连接参数（各子命令共用）。
@@ -151,6 +155,7 @@ async fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Export(args) => run_export(args).await,
         Command::Databases(args) => run_databases(args).await,
+        Command::Er(args) => er::run(args).await,
     }
 }
 

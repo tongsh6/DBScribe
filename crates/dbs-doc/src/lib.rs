@@ -4,6 +4,9 @@
 //! 各格式共用 [`ExportOptions`]，统一入口为 [`export`]。
 
 pub mod common;
+pub mod er_file;
+pub mod er_markdown;
+pub mod er_svg;
 pub mod excel;
 pub mod html;
 pub mod json;
@@ -16,6 +19,8 @@ use dbs_core::{OutputFormat, TableInfo};
 use std::path::Path;
 
 pub use common::{column_headers, column_values, ExportOptions, ExportReport, ProgressFn};
+pub use er_markdown::render_er_report;
+pub use er_svg::{render_er_svg, render_er_svg_with_collapsed};
 pub use excel::export_excel;
 pub use html::export_html;
 pub use json::export_json;
